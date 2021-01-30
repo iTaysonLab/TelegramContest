@@ -43,6 +43,7 @@ import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Cells.CheckBoxCell;
 import org.telegram.ui.Cells.TextCheckCell;
+import org.telegram.ui.Components.AlertsCreator;
 import org.telegram.ui.Components.BetterRatingView;
 import org.telegram.ui.Components.EditTextBoldCursor;
 import org.telegram.ui.Components.LayoutHelper;
@@ -62,6 +63,11 @@ public class VoIPHelper {
 	public static long lastCallTime = 0;
 
 	private static final int VOIP_SUPPORT_ID = 4244000;
+
+	// Stubs
+	public static void startCall(TLRPC.User user, boolean videoCall, boolean canVideoCall, final Activity activity, TLRPC.UserFull userFull, BaseFragment frag) {
+		AlertsCreator.createCallDialogAlert(frag, user, videoCall);
+	}
 
 	public static void startCall(TLRPC.User user, boolean videoCall, boolean canVideoCall, final Activity activity, TLRPC.UserFull userFull) {
 		if (userFull != null && userFull.phone_calls_private) {

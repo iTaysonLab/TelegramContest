@@ -1638,7 +1638,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     if (user_id != 0) {
                         TLRPC.User user = getMessagesController().getUser(user_id);
                         if (user != null) {
-                            VoIPHelper.startCall(user, id == video_call_item, userInfo != null && userInfo.video_calls_available, getParentActivity(), userInfo);
+                            VoIPHelper.startCall(user, id == video_call_item, userInfo != null && userInfo.video_calls_available, getParentActivity(), userInfo, ProfileActivity.this);
                         }
                     } else if (chat_id != 0) {
                         ChatObject.Call call = getMessagesController().getGroupCall(chat_id, false);
@@ -3561,7 +3561,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                         FileLog.e(e);
                     }
                 } else if (i == 2 || i == 3) {
-                    VoIPHelper.startCall(user, i == 3, userInfo != null && userInfo.video_calls_available, getParentActivity(), userInfo);
+                    VoIPHelper.startCall(user, i == 3, userInfo != null && userInfo.video_calls_available, getParentActivity(), userInfo, ProfileActivity.this);
                 }
             });
             showDialog(builder.create());
@@ -5831,7 +5831,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 }
             }
             if (grantResults.length > 0 && allGranted) {
-                VoIPHelper.startCall(user, requestCode == 102, userInfo != null && userInfo.video_calls_available, getParentActivity(), userInfo);
+                VoIPHelper.startCall(user, requestCode == 102, userInfo != null && userInfo.video_calls_available, getParentActivity(), userInfo, ProfileActivity.this);
             } else {
                 VoIPHelper.permissionDenied(getParentActivity(), null, requestCode);
             }

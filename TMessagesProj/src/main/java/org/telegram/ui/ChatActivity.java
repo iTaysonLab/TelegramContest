@@ -1870,7 +1870,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                     openSearchWithText(null);
                 } else if (id == call || id == video_call) {
                     if (currentUser != null && getParentActivity() != null) {
-                        VoIPHelper.startCall(currentUser, id == video_call, userInfo != null && userInfo.video_calls_available, getParentActivity(), getMessagesController().getUserFull(currentUser.id));
+                        VoIPHelper.startCall(currentUser, id == video_call, userInfo != null && userInfo.video_calls_available, getParentActivity(), getMessagesController().getUserFull(currentUser.id), ChatActivity.this);
                     }
                 } else if (id == text_bold) {
                     if (chatActivityEnterView != null) {
@@ -10808,7 +10808,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                 if (requestCode == 103) {
                     VoIPHelper.startCall(currentChat, createGroupCall, getParentActivity());
                 } else {
-                    VoIPHelper.startCall(currentUser, requestCode == 102, userInfo != null && userInfo.video_calls_available, getParentActivity(), getMessagesController().getUserFull(currentUser.id));
+                    VoIPHelper.startCall(currentUser, requestCode == 102, userInfo != null && userInfo.video_calls_available, getParentActivity(), getMessagesController().getUserFull(currentUser.id), ChatActivity.this);
                 }
             } else {
                 VoIPHelper.permissionDenied(getParentActivity(), null, requestCode);
@@ -19122,7 +19122,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
             }
             case 18: {
                 if (currentUser != null) {
-                    VoIPHelper.startCall(currentUser, selectedObject.isVideoCall(), userInfo != null && userInfo.video_calls_available, getParentActivity(), getMessagesController().getUserFull(currentUser.id));
+                    VoIPHelper.startCall(currentUser, selectedObject.isVideoCall(), userInfo != null && userInfo.video_calls_available, getParentActivity(), getMessagesController().getUserFull(currentUser.id), ChatActivity.this);
                 }
                 break;
             }
@@ -20709,7 +20709,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                         MessageObject messageObject = cell.getMessageObject();
                         if (messageObject.type == 16) {
                             if (currentUser != null) {
-                                VoIPHelper.startCall(currentUser, messageObject.isVideoCall(), userInfo != null && userInfo.video_calls_available, getParentActivity(), getMessagesController().getUserFull(currentUser.id));
+                                VoIPHelper.startCall(currentUser, messageObject.isVideoCall(), userInfo != null && userInfo.video_calls_available, getParentActivity(), getMessagesController().getUserFull(currentUser.id), ChatActivity.this);
                             }
                         } else {
                             createMenu(cell, true, false, otherX, otherY, messageObject.isMusic());
