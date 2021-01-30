@@ -1121,6 +1121,8 @@
     <string name="ChannelPostDeleted">Sorry, this post has been removed from the discussion group.</string>
     <string name="UnpinAllMessages">UNPIN ALL MESSAGES</string>
     <string name="HidePinnedMessages">HIDE PINNED MESSAGES</string>
+    <string name="HidePinnedMessagesAction">Hide pinned messages</string>
+    <string name="ShowPinnedMessagesAction">Show pinned messages</string>
     <string name="PinnedMessagesHidden">Pinned messages hidden</string>
     <string name="PinnedMessagesHiddenInfo">You will see the bar with pinned messages only if a new message is pinned.</string>
     <string name="ImportedMessage">Imported</string>

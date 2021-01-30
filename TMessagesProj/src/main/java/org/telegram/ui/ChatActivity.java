@@ -288,6 +288,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
     private StickersAdapter stickersAdapter;
     private FrameLayout stickersPanel;
     private ActionBarMenuSubItem muteItem;
+    private ActionBarMenuSubItem pinVisibilityItem;
     private FrameLayout pagedownButton;
     private ImageView pagedownButtonImage;
     private boolean pagedownButtonShowedByScroll;
@@ -1008,6 +1009,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
     private final static int delete_chat = 16;
     private final static int share_contact = 17;
     private final static int mute = 18;
+    private final static int change_pin_visibility = 19;
     private final static int report = 21;
     private final static int star = 22;
     private final static int edit = 23;
@@ -1819,6 +1821,8 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                     }
                 } else if (id == mute) {
                     toggleMute(false);
+                } else if (id == change_pin_visibility) {
+                    togglePinVisibility();
                 } else if (id == add_shortcut) {
                     try {
                         getMediaDataController().installShortcut(currentUser.id);
@@ -11411,6 +11415,52 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                 muteItem.setTextAndIcon(LocaleController.getString("MuteNotifications", R.string.MuteNotifications), R.drawable.msg_mute);
             }
         }
+
+        boolean hasHiddenPinnedMessages = MessagesController.getNotificationsSettings(currentAccount).getInt("pin_" + dialog_id, 0) != 0;
+        String pinActionString = hasHiddenPinnedMessages ? LocaleController.getString("ShowPinnedMessagesAction", R.string.ShowPinnedMessagesAction) : LocaleController.getString("HidePinnedMessagesAction", R.string.HidePinnedMessagesAction);
+
+        if (pinVisibilityItem != null) {
+            pinVisibilityItem.setTextAndIcon(pinActionString, R.drawable.msg_pin);
+        } else {
+            pinVisibilityItem = headerItem.addSubItem(change_pin_visibility, R.drawable.msg_pin, pinActionString);
+        }
+    }
+
+    private void togglePinVisibility() {
+        String key = "pin_" + dialog_id;
+        SharedPreferences prefs = MessagesController.getNotificationsSettings(currentAccount);
+        boolean hasHiddenPinnedMessages = prefs.getInt(key, 0) != 0;
+
+        if (hasHiddenPinnedMessages) {
+            prefs.edit().remove(key).commit();
+        } else {
+            prefs.edit().putInt(key, pinnedMessageIds.get(0)).commit();
+
+            if (pinBulletin != null) {
+                pinBulletin.hide();
+            }
+            int tag = ++pinBullerinTag;
+            int pinnedCount = getPinnedMessagesCount();
+            pinBulletin = BulletinFactory.createUnpinAllMessagesBulletin(ChatActivity.this, pinnedCount, true,
+                    () -> {
+                        SharedPreferences preferences = MessagesController.getNotificationsSettings(currentAccount);
+                        preferences.edit().remove("pin_" + dialog_id).commit();
+                        updatePinnedMessageView(true);
+                        updateTitleIcons();
+                        if (tag == pinBullerinTag) {
+                            pinBulletin = null;
+                        }
+                    },
+                    () -> {
+                        if (tag == pinBullerinTag) {
+                            pinBulletin = null;
+                        }
+                    });
+            pinBulletin.show();
+        }
+
+        updatePinnedMessageView(true);
+        updateTitleIcons();
     }
 
     private void checkAndUpdateAvatar() {
@@ -14169,6 +14219,8 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                     getMediaDataController().loadPinnedMessages(dialog_id, 0, pinnedMessageIds.isEmpty() ? 0 : pinnedMessageIds.get(0));
                     loadingPinnedMessagesList = true;
                 }
+
+                updateTitleIcons();
             }
         } else if (id == NotificationCenter.userInfoDidLoad) {
             Integer uid = (Integer) args[0];
