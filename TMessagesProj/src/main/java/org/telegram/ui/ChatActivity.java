@@ -2115,7 +2115,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
             if (searchItem != null) {
                 headerItem.addSubItem(search, R.drawable.msg_search, LocaleController.getString("Search", R.string.Search));
             }
-            if (currentChat != null && !currentChat.creator && currentChat.admin_rights == null) {
+            if (currentChat != null && !currentChat.creator && currentChat.admin_rights == null && !currentChat.verified) {
                 headerItem.addSubItem(report, R.drawable.msg_report, LocaleController.getString("ReportChat", R.string.ReportChat));
             }
             if (currentUser != null) {
