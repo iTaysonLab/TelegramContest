@@ -11424,13 +11424,15 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
             }
         }
 
-        boolean hasHiddenPinnedMessages = MessagesController.getNotificationsSettings(currentAccount).getInt("pin_" + dialog_id, 0) != 0;
-        String pinActionString = hasHiddenPinnedMessages ? LocaleController.getString("ShowPinnedMessagesAction", R.string.ShowPinnedMessagesAction) : LocaleController.getString("HidePinnedMessagesAction", R.string.HidePinnedMessagesAction);
+        if (!pinnedMessageIds.isEmpty()) {
+            boolean hasHiddenPinnedMessages = MessagesController.getNotificationsSettings(currentAccount).getInt("pin_" + dialog_id, 0) != 0;
+            String pinActionString = hasHiddenPinnedMessages ? LocaleController.getString("ShowPinnedMessagesAction", R.string.ShowPinnedMessagesAction) : LocaleController.getString("HidePinnedMessagesAction", R.string.HidePinnedMessagesAction);
 
-        if (pinVisibilityItem != null) {
-            pinVisibilityItem.setTextAndIcon(pinActionString, R.drawable.msg_pin);
-        } else {
-            pinVisibilityItem = headerItem.addSubItem(change_pin_visibility, R.drawable.msg_pin, pinActionString);
+            if (pinVisibilityItem != null) {
+                pinVisibilityItem.setTextAndIcon(pinActionString, R.drawable.msg_pin);
+            } else {
+                pinVisibilityItem = headerItem.addSubItem(change_pin_visibility, R.drawable.msg_pin, pinActionString);
+            }
         }
     }
 
