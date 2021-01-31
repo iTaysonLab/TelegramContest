@@ -1439,6 +1439,16 @@ public class AlertsCreator {
             return;
         }
 
+        final Runnable action = () -> {
+            final TLRPC.UserFull userFull = fragment.getMessagesController().getUserFull(user.id);
+            VoIPHelper.startCall(user, videoCall, userFull != null && userFull.video_calls_available, fragment.getParentActivity(), userFull);
+        };
+
+        if (SharedConfig.disableCallConfirmation) {
+            action.run();
+            return;
+        }
+
         final int account = fragment.getCurrentAccount();
         final Context context = fragment.getParentActivity();
         final FrameLayout frameLayout = new FrameLayout(context);
@@ -1482,10 +1492,23 @@ public class AlertsCreator {
         frameLayout.addView(textView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.TOP, (LocaleController.isRTL ? 21 : 76), 11, (LocaleController.isRTL ? 76 : 21), 0));
         frameLayout.addView(messageTextView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.TOP, 24, 57, 24, 9));
 
+        final boolean[] doNotAskAgain = new boolean[]{false};
+
+        CheckBoxCell cell = new CheckBoxCell(fragment.getParentActivity(), 1);
+        cell.setBackgroundDrawable(Theme.getSelectorDrawable(false));
+        cell.setText(LocaleController.getString("DoNotAskAgain", R.string.DoNotAskAgain), "", false, false);
+        cell.setPadding(LocaleController.isRTL ? AndroidUtilities.dp(16) : AndroidUtilities.dp(8), 0, LocaleController.isRTL ? AndroidUtilities.dp(8) : AndroidUtilities.dp(16), 0);
+        frameLayout.addView(cell, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 48, Gravity.TOP | Gravity.LEFT, 0, 0, 0, 9));
+        cell.setOnClickListener(v -> {
+            CheckBoxCell cell1 = (CheckBoxCell) v;
+            doNotAskAgain[0] = !doNotAskAgain[0];
+            cell1.setChecked(doNotAskAgain[0], true);
+        });
+
         AlertDialog dialog = new AlertDialog.Builder(context).setView(frameLayout)
                 .setPositiveButton(LocaleController.getString("Call", R.string.Call), (dialogInterface, i) -> {
-                    final TLRPC.UserFull userFull = fragment.getMessagesController().getUserFull(user.id);
-                    VoIPHelper.startCall(user, videoCall, userFull != null && userFull.video_calls_available, fragment.getParentActivity(), userFull);
+                    if (doNotAskAgain[0]) SharedConfig.toggleDoNotAskAboutCalls();
+                    action.run();
                 })
                 .setNegativeButton(LocaleController.getString("Cancel", R.string.Cancel), null)
                 .create();

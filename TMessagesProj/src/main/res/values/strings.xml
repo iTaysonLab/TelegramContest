@@ -2031,6 +2031,7 @@
     <string name="AuthAnotherClientUrl">This code can be used to allow someone to log in to your Telegram account.\n\nTo confirm Telegram login, please go to Settings &gt; Devices &gt; Scan QR and scan the code.</string>
     <string name="QRCodePermissionNoCamera">Telegram needs access to your camera so that you can scan QR codes.</string>
     <string name="SetProfilePhoto">Set Profile Photo</string>
+    <string name="DoNotAskAgain">Don\'t ask again</string>
     <!--cache view-->
     <string name="LocalDatabase">Local Database</string>
     <string name="LocalDatabaseClearTextTitle">Clear local database</string>
