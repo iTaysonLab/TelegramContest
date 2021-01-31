@@ -4335,7 +4335,15 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                 }
             }
         });
-        contentView.addView(chatListView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && SharedConfig.allowImeScrolling) {
+            ImeWindowInsetsWrapperView imeWrapperView = new ImeWindowInsetsWrapperView(context);
+            imeWrapperView.addView(chatListView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
+            contentView.addView(imeWrapperView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
+        } else {
+            contentView.addView(chatListView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
+        }
+
         chatListView.setOnItemLongClickListener(onItemLongClickListener);
         chatListView.setOnItemClickListener(onItemClickListener);
         chatListView.setOnScrollListener(new RecyclerView.OnScrollListener() {
