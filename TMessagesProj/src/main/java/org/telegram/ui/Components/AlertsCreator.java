@@ -1246,7 +1246,7 @@ public class AlertsCreator {
             }
         }
         frameLayout.addView(textView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.TOP, (LocaleController.isRTL ? 21 : 76), 11, (LocaleController.isRTL ? 76 : 21), 0));
-        frameLayout.addView(messageTextView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.TOP, 24, 57, 24, 9));
+        frameLayout.addView(messageTextView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.TOP, 22, 57, 22, 9));
 
         boolean canRevokeInbox = user != null && !user.bot && user.id != selfUserId && MessagesController.getInstance(account).canRevokePmInbox;
         int revokeTimeLimit;
@@ -1451,7 +1451,9 @@ public class AlertsCreator {
 
         final int account = fragment.getCurrentAccount();
         final Context context = fragment.getParentActivity();
-        final FrameLayout frameLayout = new FrameLayout(context);
+
+        final LinearLayout linearLayout = new LinearLayout(context);
+        linearLayout.setOrientation(LinearLayout.VERTICAL);
 
         final String title;
         final String message;
@@ -1469,6 +1471,8 @@ public class AlertsCreator {
         messageTextView.setGravity((LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.TOP);
         messageTextView.setText(AndroidUtilities.replaceTags(message));
 
+        FrameLayout frameLayout = new FrameLayout(context);
+
         AvatarDrawable avatarDrawable = new AvatarDrawable();
         avatarDrawable.setTextSize(AndroidUtilities.dp(12));
         avatarDrawable.setSmallSize(false);
@@ -1477,7 +1481,7 @@ public class AlertsCreator {
         BackupImageView imageView = new BackupImageView(context);
         imageView.setRoundRadius(AndroidUtilities.dp(20));
         imageView.setImage(ImageLocation.getForUser(user, false), "50_50", avatarDrawable, user);
-        frameLayout.addView(imageView, LayoutHelper.createFrame(40, 40, (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.TOP, 22, 5, 22, 0));
+        frameLayout.addView(imageView, LayoutHelper.createFrame(40, 40, (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.TOP, 22, 5, 22, 5));
 
         TextView textView = new TextView(context);
         textView.setTextColor(Theme.getColor(Theme.key_actionBarDefaultSubmenuItem));
@@ -1489,23 +1493,26 @@ public class AlertsCreator {
         textView.setGravity((LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.CENTER_VERTICAL);
         textView.setEllipsize(TextUtils.TruncateAt.END);
         textView.setText(title);
+
         frameLayout.addView(textView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.TOP, (LocaleController.isRTL ? 21 : 76), 11, (LocaleController.isRTL ? 76 : 21), 0));
-        frameLayout.addView(messageTextView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.TOP, 24, 57, 24, 9));
+
+        linearLayout.addView(frameLayout, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.TOP, 0, 0, 0, 0));
+        linearLayout.addView(messageTextView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.TOP, 22, 6, 22, 0));
 
         final boolean[] doNotAskAgain = new boolean[]{false};
 
         CheckBoxCell cell = new CheckBoxCell(fragment.getParentActivity(), 1);
         cell.setBackgroundDrawable(Theme.getSelectorDrawable(false));
         cell.setText(LocaleController.getString("DoNotAskAgain", R.string.DoNotAskAgain), "", false, false);
-        cell.setPadding(LocaleController.isRTL ? AndroidUtilities.dp(16) : AndroidUtilities.dp(8), 0, LocaleController.isRTL ? AndroidUtilities.dp(8) : AndroidUtilities.dp(16), 0);
-        frameLayout.addView(cell, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 48, Gravity.TOP | Gravity.LEFT, 0, 0, 0, 9));
+        cell.setPadding(AndroidUtilities.dp(8), 0, AndroidUtilities.dp(8), 0);
+        linearLayout.addView(cell, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 48, Gravity.BOTTOM | Gravity.LEFT, 0, 0, 0, 0));
         cell.setOnClickListener(v -> {
             CheckBoxCell cell1 = (CheckBoxCell) v;
             doNotAskAgain[0] = !doNotAskAgain[0];
             cell1.setChecked(doNotAskAgain[0], true);
         });
 
-        AlertDialog dialog = new AlertDialog.Builder(context).setView(frameLayout)
+        AlertDialog dialog = new AlertDialog.Builder(context).setView(linearLayout)
                 .setPositiveButton(LocaleController.getString("Call", R.string.Call), (dialogInterface, i) -> {
                     if (doNotAskAgain[0]) SharedConfig.toggleDoNotAskAboutCalls();
                     action.run();
