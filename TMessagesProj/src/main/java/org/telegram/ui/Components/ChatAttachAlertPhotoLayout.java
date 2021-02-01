@@ -574,7 +574,6 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
         });
         gridView.setLayoutManager(layoutManager);
         gridView.setOnItemClickListener((view, position) -> {
-            Log.d("setOnItemClickListener", "pos: "+position);
             if (!mediaEnabled || parentAlert.baseFragment == null || parentAlert.baseFragment.getParentActivity() == null) {
                 return;
             }
@@ -622,9 +621,7 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
                 PhotoViewer.getInstance().openPhotoForSelect(arrayList, position, type, false, photoViewerProvider, chatActivity);
                 AndroidUtilities.hideKeyboard(parentAlert.baseFragment.getFragmentView().findFocus());
             } else {
-                Log.d("CameraXController", "click");
                 if (SharedConfig.inappCamera) {
-                    Log.d("CameraXController", "click 2");
                     openCamera(true);
                 } else {
                     if (parentAlert.delegate != null) {
@@ -1717,14 +1714,9 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
             initialized = cameraView.isInitied();
         }
 
-        Log.d("CameraXController", "openCamera");
-
         if (cv == null || cameraInitAnimation != null || !initialized) {
-            Log.d("CameraXController", "openCamera nope");
             return;
         }
-
-        Log.d("CameraXController", "openCamera yeah");
 
         if (parentAlert.avatarPicker == 2 || parentAlert.baseFragment instanceof ChatActivity) {
             tooltipTextView.setVisibility(VISIBLE);
@@ -1936,9 +1928,12 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
 
         if (cameraXPreviewView == null && usingCameraX) {
             cameraXPreviewView = new PreviewView(parentAlert.baseFragment.getParentActivity());
-            cameraXPreviewView.setFocusable(false);
-            cameraXPreviewView.setClickable(false);
+            cameraXPreviewView.setFocusable(true);
             cameraXPreviewView.setImplementationMode(PreviewView.ImplementationMode.COMPATIBLE);
+
+            cameraXPreviewView.setOnClickListener((v) -> {
+                if (!cameraOpened) openCamera(true);
+            });
 
             if (Build.VERSION.SDK_INT >= 21) {
                 cameraXPreviewView.setOutlineProvider(new ViewOutlineProvider() {
@@ -1959,7 +1954,7 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
             }
 
             cameraXPreviewView.setContentDescription(LocaleController.getString("AccDescrInstantCamera", R.string.AccDescrInstantCamera));
-            parentAlert.getContainer().addView(cameraXPreviewView, 0, new FrameLayout.LayoutParams(itemSize, itemSize));
+            parentAlert.getContainer().addView(cameraXPreviewView, 1, new FrameLayout.LayoutParams(itemSize, itemSize));
 
             if (cameraIcon == null) {
                 cameraIcon = new FrameLayout(parentAlert.baseFragment.getParentActivity()) {
