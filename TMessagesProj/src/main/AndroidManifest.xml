@@ -19,6 +19,8 @@
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.camera2" android:required="false" />
 
+    <uses-sdk tools:overrideLibrary="androidx.camera.camera2, androidx.camera.lifecycle, androidx.camera.view, androidx.camera.core" />
+
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
