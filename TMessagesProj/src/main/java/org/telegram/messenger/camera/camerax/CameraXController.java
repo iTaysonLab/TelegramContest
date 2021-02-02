@@ -253,6 +253,7 @@ public class CameraXController implements LifecycleOwner {
 
     public void takePicture(File cameraFile, Runnable onPictureTaken) {
         Log.d("CameraXController", "takePicture = "+cameraFile.toString());
+        cameraController.setEnabledUseCases(CameraController.IMAGE_CAPTURE | CameraController.IMAGE_ANALYSIS);
         cameraController.takePicture(new ImageCapture.OutputFileOptions.Builder(cameraFile).build(), mainExecutor, new ImageCapture.OnImageSavedCallback() {
             @Override
             public void onImageSaved(@NonNull ImageCapture.OutputFileResults outputFileResults) {

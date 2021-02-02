@@ -817,14 +817,23 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
                 AndroidUtilities.lockOrientation(parentAlert.baseFragment.getParentActivity());
 
                 CameraController.VideoTakeCallback videoTakeCallback = (thumbPath, duration) -> {
-                    if (outputFile == null || parentAlert.baseFragment == null || cameraView == null) {
+                    if (outputFile == null || parentAlert.baseFragment == null || (cameraView == null && cameraXPreviewView == null)) {
                         return;
                     }
+
+                    boolean frontFace;
+
+                    if (CameraXController.cameraXEnabled()) {
+                        frontFace = cameraXController.isFrontFace();
+                    } else {
+                        frontFace = cameraView.isFrontface();
+                    }
+
                     mediaFromExternalCamera = false;
                     MediaController.PhotoEntry photoEntry = new MediaController.PhotoEntry(0, lastImageId--, 0, outputFile.getAbsolutePath(), 0, true, 0, 0, 0);
                     photoEntry.duration = (int) duration;
                     photoEntry.thumbPath = thumbPath;
-                    if (parentAlert.avatarPicker != 0 && cameraView.isFrontface()) {
+                    if (parentAlert.avatarPicker != 0 && frontFace) {
                         photoEntry.cropState = new MediaController.CropState();
                         photoEntry.cropState.mirrored = true;
                         photoEntry.cropState.freeform = false;
