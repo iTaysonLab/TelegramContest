@@ -21,10 +21,13 @@ import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
+import android.hardware.biometrics.BiometricPrompt;
 import android.os.Build;
 import android.os.SystemClock;
 import android.os.Vibrator;
 import androidx.annotation.IdRes;
+import androidx.biometric.BiometricManager;
+import androidx.core.content.ContextCompat;
 import androidx.core.os.CancellationSignal;
 import android.text.Editable;
 import android.text.InputFilter;
@@ -929,6 +932,36 @@ public class PasscodeView extends FrameLayout {
     private void checkFingerprint() {
         Activity parentActivity = (Activity) getContext();
         if (Build.VERSION.SDK_INT >= 23 && parentActivity != null && SharedConfig.useFingerprint && !ApplicationLoader.mainInterfacePaused) {
+            if (Build.VERSION.SDK_INT >= 28) {
+                BiometricManager bm = BiometricManager.from(ApplicationLoader.applicationContext);
+                if (bm.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_WEAK) != BiometricManager.BIOMETRIC_SUCCESS) return;
+
+                BiometricPrompt.Builder bpb = new BiometricPrompt.Builder(parentActivity)
+                        .setTitle(LocaleController.getString("AppName", R.string.AppName))
+                        .setSubtitle(LocaleController.getString("BiometricsInfo", R.string.BiometricsInfo))
+                        .setNegativeButton(LocaleController.getString("Cancel", R.string.Cancel), ContextCompat.getMainExecutor(parentActivity), (d, w) -> {
+
+                        });
+
+                if (Build.VERSION.SDK_INT >= 29) {
+                    bpb.setConfirmationRequired(false);
+                }
+
+                if (Build.VERSION.SDK_INT >= 30) {
+                    bpb.setAllowedAuthenticators(android.hardware.biometrics.BiometricManager.Authenticators.BIOMETRIC_WEAK);
+                }
+
+                bpb.build().authenticate(new android.os.CancellationSignal(), ContextCompat.getMainExecutor(parentActivity), new BiometricPrompt.AuthenticationCallback() {
+                    @Override
+                    public void onAuthenticationSucceeded(BiometricPrompt.AuthenticationResult result) {
+                        super.onAuthenticationSucceeded(result);
+                        processDone(true);
+                    }
+                });
+
+                return;
+            }
+
             try {
                 if (fingerprintDialog != null && fingerprintDialog.isShowing()) {
                     return;

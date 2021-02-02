@@ -2374,6 +2374,7 @@
     <string name="AutoLockDisabled">Disabled</string>
     <string name="UnlockFingerprint">Unlock with Fingerprint</string>
     <string name="FingerprintInfo">Confirm fingerprint to continue</string>
+    <string name="BiometricsInfo">Confirm biometrics to continue</string>
     <string name="FingerprintHelp">Touch sensor</string>
     <string name="FingerprintNotRecognized">Fingerprint not recognized. Try again.</string>
     <string name="ScreenCapture">Show App Content in Task Switcher</string>
