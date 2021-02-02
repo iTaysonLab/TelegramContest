@@ -91,8 +91,8 @@ public class CameraXController implements LifecycleOwner {
         }
 
         receivingCamera = true;
-
         if (threadPool == null) threadPool = new ThreadPoolExecutor(CORE_POOL_SIZE, MAX_POOL_SIZE, KEEP_ALIVE_SECONDS, TimeUnit.SECONDS, new LinkedBlockingQueue<>());
+        onCamerasRequestedCallbackQueue.add(onCamerasRequested);
 
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE);
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START);
@@ -104,8 +104,6 @@ public class CameraXController implements LifecycleOwner {
         cameraController.getInitializationFuture().addListener(() -> {
             receivingCamera = false;
             cameraCreated = true;
-
-            //cameraController.setTapToFocusEnabled(false);
 
             if (frontFace) cameraController.setCameraSelector(CameraSelector.DEFAULT_FRONT_CAMERA);
 
@@ -166,7 +164,7 @@ public class CameraXController implements LifecycleOwner {
 
     @UseExperimental(markerClass = ExperimentalVideo.class)
     public void startRecordingVideo(File output, boolean mirror, final org.telegram.messenger.camera.CameraController.VideoTakeCallback callback, final Runnable onVideoStartRecord) {
-        Log.d("CameraXController", "startRecordingVideo");
+        FileLog.d("[CameraXController] startRecordingVideo");
 
         videoCallback = callback;
 
@@ -174,6 +172,7 @@ public class CameraXController implements LifecycleOwner {
         cameraController.startRecording(OutputFileOptions.builder(output).build(), threadPool, new OnVideoSavedCallback() {
             @Override
             public void onVideoSaved(@NonNull OutputFileResults outputFileResults) {
+                FileLog.d("[CameraXController] onVideoSaved: "+outputFileResults.toString());
                 MediaMetadataRetriever mediaMetadataRetriever = null;
                 long duration = 0;
                 try {
@@ -240,7 +239,7 @@ public class CameraXController implements LifecycleOwner {
 
     @UseExperimental(markerClass = ExperimentalVideo.class)
     public void stopVideoRecording() {
-        Log.d("CameraXController", "stopVideoRecording");
+        FileLog.d("[CameraXController] stopVideoRecording");
         cameraController.stopRecording();
         cameraController.setEnabledUseCases(CameraController.IMAGE_CAPTURE | CameraController.IMAGE_ANALYSIS);
     }
@@ -252,7 +251,7 @@ public class CameraXController implements LifecycleOwner {
     }
 
     public void takePicture(File cameraFile, Runnable onPictureTaken) {
-        Log.d("CameraXController", "takePicture = "+cameraFile.toString());
+        FileLog.d("[CameraXController] takePicture = "+cameraFile.toString());
         cameraController.setEnabledUseCases(CameraController.IMAGE_CAPTURE | CameraController.IMAGE_ANALYSIS);
         cameraController.takePicture(new ImageCapture.OutputFileOptions.Builder(cameraFile).build(), mainExecutor, new ImageCapture.OnImageSavedCallback() {
             @Override
