@@ -26,7 +26,6 @@ import android.os.Build;
 import android.os.SystemClock;
 import android.os.Vibrator;
 import androidx.annotation.IdRes;
-import androidx.biometric.BiometricManager;
 import androidx.core.content.ContextCompat;
 import androidx.core.os.CancellationSignal;
 import android.text.Editable;
@@ -933,8 +932,8 @@ public class PasscodeView extends FrameLayout {
         Activity parentActivity = (Activity) getContext();
         if (Build.VERSION.SDK_INT >= 23 && parentActivity != null && SharedConfig.useFingerprint && !ApplicationLoader.mainInterfacePaused) {
             if (Build.VERSION.SDK_INT >= 28) {
-                BiometricManager bm = BiometricManager.from(ApplicationLoader.applicationContext);
-                if (bm.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_WEAK) != BiometricManager.BIOMETRIC_SUCCESS) return;
+                //BiometricManager bm = (BiometricManager) ApplicationLoader.applicationContext.getSystemService(Context.BIOMETRIC_SERVICE);
+                //if (!bm.canAuthenticate()) return;
 
                 BiometricPrompt.Builder bpb = new BiometricPrompt.Builder(parentActivity)
                         .setTitle(LocaleController.getString("AppName", R.string.AppName))
