@@ -1,6 +1,7 @@
 package org.telegram.messenger.camera.camerax;
 
 import android.app.Activity;
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.drawable.BitmapDrawable;
@@ -67,8 +68,8 @@ public class CameraXController implements LifecycleOwner {
     private boolean receivingCamera = false;
     private boolean cameraCreated = false;
 
-    public CameraXController(Activity activity) {
-        mainExecutor = ContextCompat.getMainExecutor(activity);
+    public CameraXController(Context context) {
+        mainExecutor = ContextCompat.getMainExecutor(context);
     }
 
     public void toggleLenses() {
