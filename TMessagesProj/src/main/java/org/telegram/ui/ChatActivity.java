@@ -21438,7 +21438,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                     int index;
                     if ((index = animatingMessageObjects.indexOf(message)) != -1) {
                         animatingMessageObjects.remove(index);
-                        if (instantCameraView.getTextureView() != null || instantCameraView.getXPreviewView() != null) {
+                        if (instantCameraView.getTextureView() != null) {
                             messageCell.getViewTreeObserver().addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
                                 @Override
                                 public boolean onPreDraw() {
