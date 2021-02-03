@@ -164,8 +164,9 @@ public class CameraXController implements LifecycleOwner {
     private org.telegram.messenger.camera.CameraController.VideoTakeCallback videoCallback;
 
     @UseExperimental(markerClass = ExperimentalVideo.class)
-    public void startRecordingVideo(File output, boolean mirror, final org.telegram.messenger.camera.CameraController.VideoTakeCallback callback, final Runnable onVideoStartRecord) {
-        FileLog.d("[CameraXController] startRecordingVideo");
+    public void startRecordingVideo(@Nullable File output, boolean mirror, final org.telegram.messenger.camera.CameraController.VideoTakeCallback callback, final Runnable onVideoStartRecord) {
+        if (output == null) return;
+        FileLog.d("[CameraXController] startRecordingVideo (to = "+output.getAbsolutePath()+"");
 
         videoCallback = callback;
 

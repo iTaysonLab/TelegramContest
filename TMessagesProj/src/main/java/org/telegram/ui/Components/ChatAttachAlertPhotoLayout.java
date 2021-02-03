@@ -19,6 +19,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Matrix;
 import android.graphics.Outline;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
@@ -1305,7 +1306,7 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
                     if (cameraView != null) {
                         cameraView.focusToPoint((int) viewX, (int) viewY);
                     } else {
-                        // TODO: CameraX Focus
+                        // CameraX Focus is handled in PreviewView itself!
                     }
                 }
             }
@@ -2115,10 +2116,19 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
             return;
         }
         try {
-            TextureView textureView = cameraView.getTextureView();
-            Bitmap bitmap = textureView.getBitmap();
+            Bitmap bitmap;
+            Matrix matrix = null;
+
+            if (cameraXPreviewView != null) {
+                bitmap = cameraXPreviewView.getBitmap();
+            } else {
+                TextureView textureView = cameraView.getTextureView();
+                bitmap = textureView.getBitmap();
+                matrix = cameraView.getMatrix();
+            }
+
             if (bitmap != null) {
-                Bitmap newBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), cameraView.getMatrix(), true);
+                Bitmap newBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
                 bitmap.recycle();
                 bitmap = newBitmap;
                 Bitmap lastBitmap = Bitmap.createScaledBitmap(bitmap, 80, (int) (bitmap.getHeight() / (bitmap.getWidth() / 80.0f)), true);
@@ -3061,6 +3071,11 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
         } else if (view == cameraView) {
             if (cameraOpened && !cameraAnimationInProgress) {
                 cameraView.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY));
+                return true;
+            }
+        } else if (view == cameraXPreviewView) {
+            if (cameraOpened && !cameraAnimationInProgress) {
+                cameraXPreviewView.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY));
                 return true;
             }
         } else if (view == cameraPanel) {
