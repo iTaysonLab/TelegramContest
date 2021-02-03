@@ -13,7 +13,6 @@ import android.animation.AnimatorListenerAdapter;
 import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
-import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Context;
@@ -57,10 +56,7 @@ import android.view.animation.DecelerateInterpolator;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 
-import androidx.camera.view.PreviewView;
-
 import com.google.android.exoplayer2.ExoPlayer;
-import com.google.android.exoplayer2.util.Log;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
@@ -81,7 +77,6 @@ import org.telegram.messenger.camera.CameraController;
 import org.telegram.messenger.camera.CameraInfo;
 import org.telegram.messenger.camera.CameraSession;
 import org.telegram.messenger.camera.Size;
-import org.telegram.messenger.camera.camerax.CameraXController;
 import org.telegram.messenger.video.MP4Builder;
 import org.telegram.messenger.video.Mp4Movie;
 import org.telegram.tgnet.ConnectionsManager;
@@ -110,11 +105,6 @@ import javax.microedition.khronos.opengles.GL;
 
 @TargetApi(18)
 public class InstantCameraView extends FrameLayout implements NotificationCenter.NotificationCenterDelegate {
-    private final boolean useCameraX = CameraXController.cameraXEnabled();
-    private CameraXController cameraXController;
-    private PreviewView cameraXPreviewView;
-    private Runnable cameraXProgressRunnable;
-    private int cameraXEndStatus;
 
     private int currentAccount = UserConfig.selectedAccount;
     private InstantViewCameraContainer cameraContainer;
@@ -213,15 +203,9 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
 
     private BlurBehindDrawable blurBehindDrawable;
 
-    @SuppressLint("ClickableViewAccessibility")
     public InstantCameraView(Context context, ChatActivity parentFragment) {
         super(context);
         parentView = parentFragment.getFragmentView();
-
-        if (useCameraX) {
-            cameraXController = new CameraXController(context);
-        }
-
         setOnTouchListener((v, event) -> {
             if (event.getAction() == MotionEvent.ACTION_DOWN && baseFragment != null) {
                 if (videoPlayer != null) {
@@ -336,12 +320,9 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
         switchCameraButton.setContentDescription(LocaleController.getString("AccDescrSwitchCamera", R.string.AccDescrSwitchCamera));
         addView(switchCameraButton, LayoutHelper.createFrame(62, 62, Gravity.LEFT | Gravity.BOTTOM, 8, 0, 0, 0));
         switchCameraButton.setOnClickListener(v -> {
-            if (useCameraX) {
-                if (!cameraXController.isCameraInitialized()) return;
-            } else if (!cameraReady || cameraSession == null || !cameraSession.isInitied() || cameraThread == null) {
+            if (!cameraReady || cameraSession == null || !cameraSession.isInitied() || cameraThread == null) {
                 return;
             }
-
             switchCamera();
             ObjectAnimator animator = ObjectAnimator.ofFloat(switchCameraButton, View.SCALE_X, 0.0f).setDuration(100);
             animator.addListener(new AnimatorListenerAdapter() {
@@ -417,9 +398,6 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
         if (cameraSession != null) {
             cameraSession.destroy();
             CameraController.getInstance().close(cameraSession, !async ? new CountDownLatch(1) : null, beforeDestroyRunnable);
-        } else {
-            cameraXController.detachPreview(cameraXPreviewView);
-            cameraXController.onDestroy();
         }
     }
 
@@ -488,7 +466,7 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
     }
 
     public void showCamera() {
-        if (textureView != null || cameraXPreviewView != null) {
+        if (textureView != null) {
             return;
         }
 
@@ -531,55 +509,46 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
         }
 
         textureView = new TextureView(getContext());
-        if (!useCameraX) {
-            textureView.setSurfaceTextureListener(new TextureView.SurfaceTextureListener() {
-                @Override
-                public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
+        textureView.setSurfaceTextureListener(new TextureView.SurfaceTextureListener() {
+            @Override
+            public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
+                if (BuildVars.LOGS_ENABLED) {
+                    FileLog.d("camera surface available");
+                }
+                if (cameraThread == null && surface != null) {
+                    if (cancelled) {
+                        return;
+                    }
                     if (BuildVars.LOGS_ENABLED) {
-                        FileLog.d("camera surface available");
+                        FileLog.d("start create thread");
                     }
-                    if (cameraThread == null && surface != null) {
-                        if (cancelled) {
-                            return;
-                        }
-                        if (BuildVars.LOGS_ENABLED) {
-                            FileLog.d("start create thread");
-                        }
-                        cameraThread = new CameraGLThread(surface, width, height);
-                    }
+                    cameraThread = new CameraGLThread(surface, width, height);
                 }
+            }
 
-                @Override
-                public void onSurfaceTextureSizeChanged(SurfaceTexture surface, final int width, final int height) {
+            @Override
+            public void onSurfaceTextureSizeChanged(SurfaceTexture surface, final int width, final int height) {
 
+            }
+
+            @Override
+            public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
+                if (cameraThread != null) {
+                    cameraThread.shutdown(0);
+                    cameraThread = null;
                 }
-
-                @Override
-                public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
-                    if (cameraThread != null) {
-                        cameraThread.shutdown(0);
-                        cameraThread = null;
-                    }
-                    if (cameraSession != null) {
-                        CameraController.getInstance().close(cameraSession, null, null);
-                    }
-                    return true;
+                if (cameraSession != null) {
+                    CameraController.getInstance().close(cameraSession, null, null);
                 }
+                return true;
+            }
 
-                @Override
-                public void onSurfaceTextureUpdated(SurfaceTexture surface) {
+            @Override
+            public void onSurfaceTextureUpdated(SurfaceTexture surface) {
 
-                }
-            });
-        }
+            }
+        });
         cameraContainer.addView(textureView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
-
-        if (useCameraX) {
-            cameraXPreviewView = new PreviewView(getContext());
-            cameraXController.attachPreview(cameraXPreviewView);
-            cameraContainer.addView(cameraXPreviewView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
-            createCameraX();
-        }
 
         setVisibility(VISIBLE);
 
@@ -680,7 +649,7 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
     }
 
     public void send(int state, boolean notify, int scheduleDate) {
-        if (textureView == null && cameraXPreviewView == null) {
+        if (textureView == null) {
             return;
         }
         stopProgressTimer();
@@ -688,7 +657,6 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
             videoPlayer.releasePlayer(true);
             videoPlayer = null;
         }
-        Log.d("ICV", "send (state = "+state+", notify = "+notify+", scheduleDate = "+scheduleDate+")");
         if (state == 4) {
             if (videoEditedInfo.needConvert()) {
                 file = null;
@@ -729,24 +697,19 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
             } else {
                 reason = state == 3 ? 2 : 5;
             }
-            NotificationCenter.getInstance(currentAccount).postNotificationName(NotificationCenter.recordStopped, recordingGuid, reason);
-            int send;
-            if (cancelled) {
-                send = 0;
-            } else if (state == 3) {
-                send = 2;
-            } else {
-                send = 1;
-            }
-
             if (cameraThread != null) {
+                NotificationCenter.getInstance(currentAccount).postNotificationName(NotificationCenter.recordStopped, recordingGuid, reason);
+                int send;
+                if (cancelled) {
+                    send = 0;
+                } else if (state == 3) {
+                    send = 2;
+                } else {
+                    send = 1;
+                }
                 saveLastCameraBitmap();
                 cameraThread.shutdown(send);
                 cameraThread = null;
-            } else if (useCameraX) {
-                saveLastCameraBitmap();
-                cameraXEndStatus = send;
-                cameraXController.stopVideoRecording();
             }
             if (cancelled) {
                 NotificationCenter.getInstance(currentAccount).postNotificationName(NotificationCenter.audioRecordTooShort, recordingGuid, true, (int) recordedTime);
@@ -756,102 +719,10 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
         }
     }
 
-    private void receiveCameraXState(int state) {
-        if (state != 0) {
-            AndroidUtilities.runOnUIThread(() -> {
-                videoEditedInfo = new VideoEditedInfo();
-                videoEditedInfo.roundVideo = true;
-                videoEditedInfo.startTime = -1;
-                videoEditedInfo.endTime = -1;
-                videoEditedInfo.file = file;
-                videoEditedInfo.encryptedFile = encryptedFile;
-                videoEditedInfo.key = key;
-                videoEditedInfo.iv = iv;
-                videoEditedInfo.estimatedSize = Math.max(1, size);
-                videoEditedInfo.framerate = 25;
-                videoEditedInfo.resultWidth = videoEditedInfo.originalWidth = 240;
-                videoEditedInfo.resultHeight = videoEditedInfo.originalHeight = 240;
-                videoEditedInfo.originalPath = cameraFile.getAbsolutePath();
-                if (state == 1) {
-                    if (baseFragment.isInScheduleMode()) {
-                        AlertsCreator.createScheduleDatePickerDialog(baseFragment.getParentActivity(), baseFragment.getDialogId(), (notify, scheduleDate) -> {
-                            baseFragment.sendMedia(new MediaController.PhotoEntry(0, 0, 0, cameraFile.getAbsolutePath(), 0, true, 0, 0, 0), videoEditedInfo, notify, scheduleDate);
-                            startAnimation(false);
-                        }, () -> {
-                            startAnimation(false);
-                        });
-                    } else {
-                        baseFragment.sendMedia(new MediaController.PhotoEntry(0, 0, 0, cameraFile.getAbsolutePath(), 0, true, 0, 0, 0), videoEditedInfo, true, 0);
-                    }
-                } else {
-                    videoPlayer = new VideoPlayer();
-                    videoPlayer.setDelegate(new VideoPlayer.VideoPlayerDelegate() {
-                        @Override
-                        public void onStateChanged(boolean playWhenReady, int playbackState) {
-                            if (videoPlayer == null) {
-                                return;
-                            }
-                            if (videoPlayer.isPlaying() && playbackState == ExoPlayer.STATE_ENDED) {
-                                videoPlayer.seekTo(videoEditedInfo.startTime > 0 ? videoEditedInfo.startTime : 0);
-                            }
-                        }
-
-                        @Override
-                        public void onError(VideoPlayer player, Exception e) {
-                            FileLog.e(e);
-                        }
-
-                        @Override
-                        public void onVideoSizeChanged(int width, int height, int unappliedRotationDegrees, float pixelWidthHeightRatio) {
-
-                        }
-
-                        @Override
-                        public void onRenderedFirstFrame() {
-
-                        }
-
-                        @Override
-                        public boolean onSurfaceDestroyed(SurfaceTexture surfaceTexture) {
-                            return false;
-                        }
-
-                        @Override
-                        public void onSurfaceTextureUpdated(SurfaceTexture surfaceTexture) {
-
-                        }
-                    });
-                    videoPlayer.setTextureView(textureView);
-                    videoPlayer.preparePlayer(Uri.fromFile(cameraFile), "other");
-                    videoPlayer.play();
-                    videoPlayer.setMute(true);
-                    startProgressTimer();
-
-                    AnimatorSet animatorSet = new AnimatorSet();
-                    animatorSet.playTogether(
-                            ObjectAnimator.ofFloat(switchCameraButton, View.ALPHA, 0.0f),
-                            ObjectAnimator.ofInt(paint, AnimationProperties.PAINT_ALPHA, 0),
-                            ObjectAnimator.ofFloat(muteImageView, View.ALPHA, 1.0f));
-                    animatorSet.setDuration(180);
-                    animatorSet.setInterpolator(new DecelerateInterpolator());
-                    animatorSet.start();
-                    videoEditedInfo.estimatedDuration = recordedTime;
-                    NotificationCenter.getInstance(currentAccount).postNotificationName(NotificationCenter.audioDidSent, recordingGuid, videoEditedInfo, cameraFile.getAbsolutePath(), new ArrayList<Bitmap>());
-                }
-                //FileLoader.getInstance(currentAccount).uploadFile(file.toString(), isSecretChat, false, 1, ConnectionsManager.FileTypeVideo, false);
-                MediaController.getInstance().requestAudioFocus(false);
-            });
-        }
-    }
-
-    private Bitmap getBitmap() {
-        return useCameraX ? cameraXPreviewView.getBitmap() : textureView.getBitmap();
-    }
-
     private void saveLastCameraBitmap() {
-        Bitmap bitmap = getBitmap();
+        Bitmap bitmap = textureView.getBitmap();
         if (bitmap != null && bitmap.getPixel(0, 0) != 0) {
-            lastBitmap = Bitmap.createScaledBitmap(getBitmap(), 80, 80, true);
+            lastBitmap = Bitmap.createScaledBitmap(textureView.getBitmap(), 80, 80, true);
             if (lastBitmap != null) {
                 Utilities.blurBitmap(lastBitmap, 7, 1, lastBitmap.getWidth(), lastBitmap.getHeight(), lastBitmap.getRowBytes());
                 try {
@@ -867,13 +738,12 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
     }
 
     public void cancel(boolean byGesture) {
-        Log.d("ICV", "cancel (byGesture = "+byGesture+")");
         stopProgressTimer();
         if (videoPlayer != null) {
             videoPlayer.releasePlayer(true);
             videoPlayer = null;
         }
-        if (textureView == null && cameraXPreviewView == null) {
+        if (textureView == null) {
             return;
         }
         cancelled = true;
@@ -883,9 +753,6 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
             saveLastCameraBitmap();
             cameraThread.shutdown(0);
             cameraThread = null;
-        } else if (cameraXPreviewView != null) {
-            saveLastCameraBitmap();
-            cameraXController.onDestroy();
         }
         if (cameraFile != null) {
             cameraFile.delete();
@@ -922,16 +789,8 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
             if (parent != null) {
                 parent.removeView(textureView);
             }
-        } else if (cameraXPreviewView != null) {
-            ViewGroup parent = (ViewGroup) cameraXPreviewView.getParent();
-            if (parent != null) {
-                parent.removeView(cameraXPreviewView);
-            }
         }
-
         textureView = null;
-        cameraXPreviewView = null;
-
         cameraContainer.setImageReceiver(null);
     }
 
@@ -941,28 +800,18 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
             textureOverlayView.setImageBitmap(lastBitmap);
             textureOverlayView.setAlpha(1f);
         }
-
         if (cameraSession != null) {
             cameraSession.destroy();
             CameraController.getInstance().close(cameraSession, null, null);
             cameraSession = null;
         }
-
         isFrontface = !isFrontface;
-
-        if (useCameraX) {
-            //cameraReady = false;
-            cameraXController.toggleLenses(isFrontface);
-            textureOverlayView.setAlpha(0f);
-        } else {
-            initCamera();
-            cameraReady = false;
-            cameraThread.reinitForNewCamera();
-        }
+        initCamera();
+        cameraReady = false;
+        cameraThread.reinitForNewCamera();
     }
 
     private boolean initCamera() {
-        if (useCameraX) return true;
         ArrayList<CameraInfo> cameraInfos = CameraController.getInstance().getCameras();
         if (cameraInfos == null) {
             return false;
@@ -1031,54 +880,6 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
             FileLog.d("preview w = " + previewSize.mWidth + " h = " + previewSize.mHeight);
         }
         return true;
-    }
-
-    private void createCameraX() {
-        AndroidUtilities.runOnUIThread(() -> {
-            if (cameraXPreviewView == null) {
-                return;
-            }
-
-            if (BuildVars.LOGS_ENABLED) {
-                FileLog.d("create camerax session");
-            }
-
-            cameraXController.initCameraEngine(baseFragment.getParentActivity(), cameraXPreviewView, true, () -> {
-                // TODO: start recording
-                cameraReady = true;
-                AndroidUtilities.runOnUIThread(() -> textureOverlayView.animate().setDuration(120).alpha(0.0f).setInterpolator(new DecelerateInterpolator()).start());
-
-                if (cancelled) {
-                    return;
-                }
-
-                try {
-                    performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP, HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING);
-                } catch (Exception ignore) {
-
-                }
-
-                cameraXController.startRecordingVideo(cameraFile, false, (thumbPath, duration) -> {
-                    FileLoader.getInstance(currentAccount).uploadFile(cameraFile.toString(), isSecretChat, false, 1, ConnectionsManager.FileTypeVideo, false);
-                    FileLoader.getInstance(currentAccount).checkUploadNewDataAvailable(cameraFile.toString(), isSecretChat, 0, cameraFile.length());
-                    AndroidUtilities.runOnUIThread(() -> NotificationCenter.getInstance(currentAccount).postNotificationName(NotificationCenter.recordStopped));
-                    receiveCameraXState(cameraXEndStatus);
-                }, () -> {
-                    AndroidUtilities.lockOrientation(baseFragment.getParentActivity());
-                    recording = true;
-                    recordStartTime = System.currentTimeMillis();
-                    invalidate();
-                    NotificationCenter.getInstance(currentAccount).postNotificationName(NotificationCenter.recordStarted, recordingGuid, false);
-
-                    cameraXProgressRunnable = () -> {
-                        AndroidUtilities.runOnUIThread(() -> NotificationCenter.getInstance(currentAccount).postNotificationName(NotificationCenter.recordProgressChanged, recordingGuid, 0.0));
-                        if (recording) AndroidUtilities.runOnUIThread(cameraXProgressRunnable, 500);
-                    };
-
-                    AndroidUtilities.runOnUIThread(cameraXProgressRunnable);
-                });
-            });
-        });
     }
 
     private void createCamera(final SurfaceTexture surfaceTexture) {
@@ -1182,10 +983,6 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
 
     public TextureView getTextureView() {
         return textureView;
-    }
-
-    public PreviewView getXPreviewView() {
-        return cameraXPreviewView;
     }
 
     public class CameraGLThread extends DispatchQueue {
