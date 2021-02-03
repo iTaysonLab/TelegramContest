@@ -60,6 +60,7 @@ import android.widget.ImageView;
 import androidx.camera.view.PreviewView;
 
 import com.google.android.exoplayer2.ExoPlayer;
+import com.google.android.exoplayer2.util.Log;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
@@ -112,6 +113,8 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
     private final boolean useCameraX = CameraXController.cameraXEnabled();
     private CameraXController cameraXController;
     private PreviewView cameraXPreviewView;
+    private Runnable cameraXProgressRunnable;
+    private int cameraXEndStatus;
 
     private int currentAccount = UserConfig.selectedAccount;
     private InstantViewCameraContainer cameraContainer;
@@ -527,13 +530,8 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
             FileLog.d("show round camera");
         }
 
-        if (useCameraX) {
-            cameraXPreviewView = new PreviewView(getContext());
-            cameraXController.attachPreview(cameraXPreviewView);
-            cameraContainer.addView(cameraXPreviewView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
-            createCameraX();
-        } else {
-            textureView = new TextureView(getContext());
+        textureView = new TextureView(getContext());
+        if (!useCameraX) {
             textureView.setSurfaceTextureListener(new TextureView.SurfaceTextureListener() {
                 @Override
                 public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
@@ -573,7 +571,14 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
 
                 }
             });
-            cameraContainer.addView(textureView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
+        }
+        cameraContainer.addView(textureView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
+
+        if (useCameraX) {
+            cameraXPreviewView = new PreviewView(getContext());
+            cameraXController.attachPreview(cameraXPreviewView);
+            cameraContainer.addView(cameraXPreviewView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
+            createCameraX();
         }
 
         setVisibility(VISIBLE);
@@ -683,6 +688,7 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
             videoPlayer.releasePlayer(true);
             videoPlayer = null;
         }
+        Log.d("ICV", "send (state = "+state+", notify = "+notify+", scheduleDate = "+scheduleDate+")");
         if (state == 4) {
             if (videoEditedInfo.needConvert()) {
                 file = null;
@@ -724,27 +730,117 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
                 reason = state == 3 ? 2 : 5;
             }
             NotificationCenter.getInstance(currentAccount).postNotificationName(NotificationCenter.recordStopped, recordingGuid, reason);
+            int send;
+            if (cancelled) {
+                send = 0;
+            } else if (state == 3) {
+                send = 2;
+            } else {
+                send = 1;
+            }
+
             if (cameraThread != null) {
-                int send;
-                if (cancelled) {
-                    send = 0;
-                } else if (state == 3) {
-                    send = 2;
-                } else {
-                    send = 1;
-                }
                 saveLastCameraBitmap();
                 cameraThread.shutdown(send);
                 cameraThread = null;
             } else if (useCameraX) {
                 saveLastCameraBitmap();
-                cameraXController.onDestroy();
+                cameraXEndStatus = send;
+                cameraXController.stopVideoRecording();
             }
             if (cancelled) {
                 NotificationCenter.getInstance(currentAccount).postNotificationName(NotificationCenter.audioRecordTooShort, recordingGuid, true, (int) recordedTime);
                 startAnimation(false);
                 MediaController.getInstance().requestAudioFocus(false);
             }
+        }
+    }
+
+    private void receiveCameraXState(int state) {
+        if (state != 0) {
+            AndroidUtilities.runOnUIThread(() -> {
+                videoEditedInfo = new VideoEditedInfo();
+                videoEditedInfo.roundVideo = true;
+                videoEditedInfo.startTime = -1;
+                videoEditedInfo.endTime = -1;
+                videoEditedInfo.file = file;
+                videoEditedInfo.encryptedFile = encryptedFile;
+                videoEditedInfo.key = key;
+                videoEditedInfo.iv = iv;
+                videoEditedInfo.estimatedSize = Math.max(1, size);
+                videoEditedInfo.framerate = 25;
+                videoEditedInfo.resultWidth = videoEditedInfo.originalWidth = 240;
+                videoEditedInfo.resultHeight = videoEditedInfo.originalHeight = 240;
+                videoEditedInfo.originalPath = cameraFile.getAbsolutePath();
+                if (state == 1) {
+                    if (baseFragment.isInScheduleMode()) {
+                        AlertsCreator.createScheduleDatePickerDialog(baseFragment.getParentActivity(), baseFragment.getDialogId(), (notify, scheduleDate) -> {
+                            baseFragment.sendMedia(new MediaController.PhotoEntry(0, 0, 0, cameraFile.getAbsolutePath(), 0, true, 0, 0, 0), videoEditedInfo, notify, scheduleDate);
+                            startAnimation(false);
+                        }, () -> {
+                            startAnimation(false);
+                        });
+                    } else {
+                        baseFragment.sendMedia(new MediaController.PhotoEntry(0, 0, 0, cameraFile.getAbsolutePath(), 0, true, 0, 0, 0), videoEditedInfo, true, 0);
+                    }
+                } else {
+                    videoPlayer = new VideoPlayer();
+                    videoPlayer.setDelegate(new VideoPlayer.VideoPlayerDelegate() {
+                        @Override
+                        public void onStateChanged(boolean playWhenReady, int playbackState) {
+                            if (videoPlayer == null) {
+                                return;
+                            }
+                            if (videoPlayer.isPlaying() && playbackState == ExoPlayer.STATE_ENDED) {
+                                videoPlayer.seekTo(videoEditedInfo.startTime > 0 ? videoEditedInfo.startTime : 0);
+                            }
+                        }
+
+                        @Override
+                        public void onError(VideoPlayer player, Exception e) {
+                            FileLog.e(e);
+                        }
+
+                        @Override
+                        public void onVideoSizeChanged(int width, int height, int unappliedRotationDegrees, float pixelWidthHeightRatio) {
+
+                        }
+
+                        @Override
+                        public void onRenderedFirstFrame() {
+
+                        }
+
+                        @Override
+                        public boolean onSurfaceDestroyed(SurfaceTexture surfaceTexture) {
+                            return false;
+                        }
+
+                        @Override
+                        public void onSurfaceTextureUpdated(SurfaceTexture surfaceTexture) {
+
+                        }
+                    });
+                    videoPlayer.setTextureView(textureView);
+                    videoPlayer.preparePlayer(Uri.fromFile(cameraFile), "other");
+                    videoPlayer.play();
+                    videoPlayer.setMute(true);
+                    startProgressTimer();
+
+                    AnimatorSet animatorSet = new AnimatorSet();
+                    animatorSet.playTogether(
+                            ObjectAnimator.ofFloat(switchCameraButton, View.ALPHA, 0.0f),
+                            ObjectAnimator.ofInt(paint, AnimationProperties.PAINT_ALPHA, 0),
+                            ObjectAnimator.ofFloat(muteImageView, View.ALPHA, 1.0f));
+                    animatorSet.setDuration(180);
+                    animatorSet.setInterpolator(new DecelerateInterpolator());
+                    animatorSet.start();
+                    videoEditedInfo.estimatedDuration = recordedTime;
+                    NotificationCenter.getInstance(currentAccount).postNotificationName(NotificationCenter.audioDidSent, recordingGuid, videoEditedInfo, cameraFile.getAbsolutePath(), new ArrayList<Bitmap>());
+                }
+                //FileLoader.getInstance(currentAccount).uploadFile(file.toString(), isSecretChat, false, 1, ConnectionsManager.FileTypeVideo, false);
+                MediaController.getInstance().requestAudioFocus(false);
+            });
         }
     }
 
@@ -771,6 +867,7 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
     }
 
     public void cancel(boolean byGesture) {
+        Log.d("ICV", "cancel (byGesture = "+byGesture+")");
         stopProgressTimer();
         if (videoPlayer != null) {
             videoPlayer.releasePlayer(true);
@@ -950,6 +1047,36 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
                 // TODO: start recording
                 cameraReady = true;
                 AndroidUtilities.runOnUIThread(() -> textureOverlayView.animate().setDuration(120).alpha(0.0f).setInterpolator(new DecelerateInterpolator()).start());
+
+                if (cancelled) {
+                    return;
+                }
+
+                try {
+                    performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP, HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING);
+                } catch (Exception ignore) {
+
+                }
+
+                cameraXController.startRecordingVideo(cameraFile, false, (thumbPath, duration) -> {
+                    FileLoader.getInstance(currentAccount).uploadFile(cameraFile.toString(), isSecretChat, false, 1, ConnectionsManager.FileTypeVideo, false);
+                    FileLoader.getInstance(currentAccount).checkUploadNewDataAvailable(cameraFile.toString(), isSecretChat, 0, cameraFile.length());
+                    AndroidUtilities.runOnUIThread(() -> NotificationCenter.getInstance(currentAccount).postNotificationName(NotificationCenter.recordStopped));
+                    receiveCameraXState(cameraXEndStatus);
+                }, () -> {
+                    AndroidUtilities.lockOrientation(baseFragment.getParentActivity());
+                    recording = true;
+                    recordStartTime = System.currentTimeMillis();
+                    invalidate();
+                    NotificationCenter.getInstance(currentAccount).postNotificationName(NotificationCenter.recordStarted, recordingGuid, false);
+
+                    cameraXProgressRunnable = () -> {
+                        AndroidUtilities.runOnUIThread(() -> NotificationCenter.getInstance(currentAccount).postNotificationName(NotificationCenter.recordProgressChanged, recordingGuid, 0.0));
+                        if (recording) AndroidUtilities.runOnUIThread(cameraXProgressRunnable, 500);
+                    };
+
+                    AndroidUtilities.runOnUIThread(cameraXProgressRunnable);
+                });
             });
         });
     }
@@ -1055,6 +1182,10 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
 
     public TextureView getTextureView() {
         return textureView;
+    }
+
+    public PreviewView getXPreviewView() {
+        return cameraXPreviewView;
     }
 
     public class CameraGLThread extends DispatchQueue {
