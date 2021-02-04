@@ -11431,7 +11431,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
             if (pinVisibilityItem != null) {
                 pinVisibilityItem.setTextAndIcon(pinActionString, R.drawable.msg_pin);
             } else {
-                pinVisibilityItem = headerItem.addSubItem(change_pin_visibility, R.drawable.msg_pin, pinActionString);
+                if (headerItem != null) pinVisibilityItem = headerItem.addSubItem(change_pin_visibility, R.drawable.msg_pin, pinActionString);
             }
         }
     }
