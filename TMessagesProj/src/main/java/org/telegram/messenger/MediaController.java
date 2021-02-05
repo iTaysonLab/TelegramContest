@@ -2719,6 +2719,7 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
                 }
                 AndroidUtilities.runOnUIThread(() -> {
                     try {
+                        if (playingMessageObject != null && (playingMessageObject.isVoice() || playingMessageObject.isRoundVideo())) return;
                         int tag = ++emojiSoundPlayerNum;
                         if (emojiSoundPlayer != null) {
                             emojiSoundPlayer.releasePlayer(true);
