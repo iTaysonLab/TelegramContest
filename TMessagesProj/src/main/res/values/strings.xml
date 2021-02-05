@@ -4107,6 +4107,7 @@
     <string name="AccPinnedMessagesList">Pinned messages list</string>
     <string name="AccSwitchToFullscreen">Switch to fullscreen</string>
     <string name="AccExitFullscreen">Exit fullscreen</string>
+    <string name="AccLinkOptions">Link options</string>
     <!--date formatters-->
     <string name="formatterMonthYear">MMM yyyy</string>
     <string name="formatterStats12H">MMM dd yyyy, h:mm a</string>

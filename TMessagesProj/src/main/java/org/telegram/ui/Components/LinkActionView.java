@@ -81,6 +81,7 @@ public class LinkActionView extends LinearLayout {
         optionsView = new ImageView(context);
         optionsView.setImageDrawable(ContextCompat.getDrawable(context, R.drawable.ic_ab_other));
         optionsView.setScaleType(ImageView.ScaleType.CENTER);
+        optionsView.setContentDescription(LocaleController.getString("AccLinkOptions", R.string.AccLinkOptions));
         frameLayout.addView(optionsView,  LayoutHelper.createFrame(40, 48, Gravity.RIGHT | Gravity.CENTER_VERTICAL));
         addView(frameLayout, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 4, 0, 4, 0));
 
@@ -95,6 +96,7 @@ public class LinkActionView extends LinearLayout {
         spannableStringBuilder.append(LocaleController.getString("CopyLink", R.string.CopyLink));
         spannableStringBuilder.append(".").setSpan(new DialogCell.FixedWidthSpan(AndroidUtilities.dp(5)), spannableStringBuilder.length() - 1, spannableStringBuilder.length(), 0);
         copyView.setText(spannableStringBuilder);
+        copyView.setContentDescription(LocaleController.getString("CopyLink", R.string.CopyLink));
         copyView.setPadding(AndroidUtilities.dp(10), AndroidUtilities.dp(10), AndroidUtilities.dp(10), AndroidUtilities.dp(10));
         copyView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
         copyView.setTypeface(AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
@@ -109,6 +111,7 @@ public class LinkActionView extends LinearLayout {
         spannableStringBuilder.append(LocaleController.getString("ShareLink", R.string.ShareLink));
         spannableStringBuilder.append(".").setSpan(new DialogCell.FixedWidthSpan(AndroidUtilities.dp(5)), spannableStringBuilder.length() - 1, spannableStringBuilder.length(), 0);
         shareView.setText(spannableStringBuilder);
+        shareView.setContentDescription(LocaleController.getString("ShareLink", R.string.ShareLink));
         shareView.setPadding(AndroidUtilities.dp(10), AndroidUtilities.dp(10), AndroidUtilities.dp(10), AndroidUtilities.dp(10));
 
         shareView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
@@ -124,6 +127,7 @@ public class LinkActionView extends LinearLayout {
         spannableStringBuilder.setSpan(new DialogCell.FixedWidthSpan(AndroidUtilities.dp(8)), 1, 2, 0);
         spannableStringBuilder.append(LocaleController.getString("DeleteLink", R.string.DeleteLink));
         spannableStringBuilder.append(".").setSpan(new DialogCell.FixedWidthSpan(AndroidUtilities.dp(5)), spannableStringBuilder.length() - 1, spannableStringBuilder.length(), 0);
+        removeView.setContentDescription(LocaleController.getString("DeleteLink", R.string.DeleteLink));
         removeView.setText(spannableStringBuilder);
         removeView.setPadding(AndroidUtilities.dp(10), AndroidUtilities.dp(10), AndroidUtilities.dp(10), AndroidUtilities.dp(10));
         removeView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
