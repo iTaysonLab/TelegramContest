@@ -56,6 +56,7 @@ import android.text.style.CharacterStyle;
 import android.text.style.ClickableSpan;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.URLSpan;
+import android.util.Log;
 import android.util.LongSparseArray;
 import android.util.Property;
 import android.util.SparseArray;
@@ -2024,10 +2025,21 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                 @Override
                 public void onTextChanged(EditText editText) {
                     showMessagesSearchListView(false);
+
                     if (searchingForUser) {
                         mentionsAdapter.searchUsernameOrHashtag("@" + editText.getText().toString(), 0, messages, true);
                     } else if (searchingUserMessages == null && searchingChatMessages == null && searchUserButton != null && TextUtils.equals(editText.getText(), LocaleController.getString("SearchFrom", R.string.SearchFrom))) {
                         searchUserButton.callOnClick();
+                    }
+
+                    if (searchUserButton != null) {
+                        if (editText.getText().length() > 0) {
+                            searchUserButton.setVisibility(View.INVISIBLE);
+                            searchCalendarButton.setVisibility(View.INVISIBLE);
+                        } else {
+                            searchUserButton.setVisibility(View.VISIBLE);
+                            searchCalendarButton.setVisibility(View.VISIBLE);
+                        }
                     }
                 }
 
@@ -6569,8 +6581,6 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
             searchUserButton.setOnClickListener(view -> {
                 mentionLayoutManager.setReverseLayout(true);
                 mentionsAdapter.setSearchingMentions(true);
-                searchCalendarButton.setVisibility(View.GONE);
-                searchUserButton.setVisibility(View.GONE);
                 searchingForUser = true;
                 searchingUserMessages = null;
                 searchingChatMessages = null;
@@ -6578,6 +6588,8 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                 searchItem.setSearchFieldCaption(LocaleController.getString("SearchFrom", R.string.SearchFrom));
                 AndroidUtilities.showKeyboard(searchItem.getSearchField());
                 searchItem.clearSearchText();
+                searchCalendarButton.setVisibility(View.GONE);
+                searchUserButton.setVisibility(View.GONE);
             });
             searchUserButton.setContentDescription(LocaleController.getString("AccDescrSearchByUser", R.string.AccDescrSearchByUser));
         }
