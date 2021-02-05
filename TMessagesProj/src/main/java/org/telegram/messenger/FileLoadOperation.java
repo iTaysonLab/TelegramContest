@@ -1216,7 +1216,13 @@ public class FileLoadOperation {
                             FileLog.e(e);
                         }
                     } else {
-                        renameResult = cacheFileTemp.renameTo(cacheFileFinal);
+                        try {
+                            renameResult = cacheFileTemp.renameTo(cacheFileFinal);
+                        } catch (Exception e) {
+                            FileLog.e(e);
+                            Utilities.stageQueue.postRunnable(() -> onFail(false, 0), 200);
+                            return;
+                        }
                     }
                     if (!renameResult) {
                         if (BuildVars.LOGS_ENABLED) {
