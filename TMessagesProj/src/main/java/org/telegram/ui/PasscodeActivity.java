@@ -174,6 +174,7 @@ public class PasscodeActivity extends BaseFragment implements NotificationCenter
             passwordEditText = new EditTextBoldCursor(context);
             passwordEditText.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 20);
             passwordEditText.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+            passwordEditText.setHintTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText));
             passwordEditText.setBackgroundDrawable(Theme.createEditTextDrawable(context, false));
             passwordEditText.setMaxLines(1);
             passwordEditText.setLines(1);
@@ -252,6 +253,7 @@ public class PasscodeActivity extends BaseFragment implements NotificationCenter
                 dropDownContainer.setSubMenuOpenSide(1);
                 dropDownContainer.addSubItem(pin_item, LocaleController.getString("PasscodePIN", R.string.PasscodePIN));
                 dropDownContainer.addSubItem(password_item, LocaleController.getString("PasscodePassword", R.string.PasscodePassword));
+                dropDownContainer.setContentDescription(LocaleController.getString("PasscodeType", R.string.PasscodeType));
                 actionBar.addView(dropDownContainer, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.MATCH_PARENT, Gravity.TOP | Gravity.LEFT, AndroidUtilities.isTablet() ? 64 : 56, 0, 40, 0));
                 dropDownContainer.setOnClickListener(view -> dropDownContainer.toggleSubMenu());
 
@@ -483,10 +485,12 @@ public class PasscodeActivity extends BaseFragment implements NotificationCenter
             passwordEditText.setFilters(filterArray);
             passwordEditText.setInputType(InputType.TYPE_CLASS_PHONE);
             passwordEditText.setKeyListener(DigitsKeyListener.getInstance("1234567890"));
+            passwordEditText.setHint(LocaleController.getString("PasscodePIN", R.string.PasscodePIN));
         } else if (type == 1 && currentPasswordType == 1 || type == 2 && SharedConfig.passcodeType == 1) {
             passwordEditText.setFilters(new InputFilter[0]);
             passwordEditText.setKeyListener(null);
             passwordEditText.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+            passwordEditText.setHint(LocaleController.getString("PasscodePassword", R.string.PasscodePassword));
         }
         passwordEditText.setTransformationMethod(PasswordTransformationMethod.getInstance());
     }
@@ -732,6 +736,7 @@ public class PasscodeActivity extends BaseFragment implements NotificationCenter
 
         themeDescriptions.add(new ThemeDescription(titleTextView, ThemeDescription.FLAG_TEXTCOLOR, null, null, null, null, Theme.key_windowBackgroundWhiteGrayText6));
         themeDescriptions.add(new ThemeDescription(passwordEditText, ThemeDescription.FLAG_TEXTCOLOR, null, null, null, null, Theme.key_windowBackgroundWhiteBlackText));
+        themeDescriptions.add(new ThemeDescription(passwordEditText, ThemeDescription.FLAG_HINTTEXTCOLOR, null, null, null, null, Theme.key_windowBackgroundWhiteGrayText));
         themeDescriptions.add(new ThemeDescription(passwordEditText, ThemeDescription.FLAG_BACKGROUNDFILTER, null, null, null, null, Theme.key_windowBackgroundWhiteInputField));
         themeDescriptions.add(new ThemeDescription(passwordEditText, ThemeDescription.FLAG_BACKGROUNDFILTER | ThemeDescription.FLAG_DRAWABLESELECTEDSTATE, null, null, null, null, Theme.key_windowBackgroundWhiteInputFieldActivated));
         themeDescriptions.add(new ThemeDescription(dropDown, ThemeDescription.FLAG_TEXTCOLOR, null, null, null, null, Theme.key_actionBarDefaultTitle));
