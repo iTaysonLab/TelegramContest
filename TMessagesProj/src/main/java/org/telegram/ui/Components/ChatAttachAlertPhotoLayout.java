@@ -94,6 +94,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayout implements NotificationCenter.NotificationCenterDelegate {
     private CameraXController cameraXController = null;
+    private CameraXController.QrCodeCallback cameraXQrCodeCallback = null;
     private PreviewView cameraXPreviewView = null;
 
     private RecyclerListView cameraPhotoRecyclerView;
@@ -1717,6 +1718,19 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
         if (CameraXController.cameraXEnabled()) {
             cv = cameraXPreviewView;
             initialized = cameraXController.isCameraInitialized();
+
+            if (cameraXQrCodeCallback != null) {
+                CameraXController.deAttachQrCodeCallback(cameraXQrCodeCallback);
+                cameraXQrCodeCallback = null;
+            }
+
+            cameraXQrCodeCallback = code -> {
+                AndroidUtilities.runOnUIThread(() -> {
+                    AndroidUtilities.handleProxyIntent(parentAlert.baseFragment.getParentActivity(), new Intent().setData(Uri.parse(code)));
+                });
+            };
+
+            CameraXController.attachQrCodeCallback(cameraXQrCodeCallback);
         } else {
             cv = cameraView;
             initialized = cameraView.isInitied();
@@ -2093,6 +2107,10 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
             cameraView.destroy(async, null);
         } else {
             cameraXController.onDestroy();
+            if (cameraXQrCodeCallback != null) {
+                CameraXController.deAttachQrCodeCallback(cameraXQrCodeCallback);
+                cameraXQrCodeCallback = null;
+            }
         }
 
         if (cameraInitAnimation != null) {
@@ -2658,7 +2676,14 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
 
     @Override
     void onDestroy() {
-        if (cameraXController != null) cameraXController.onDestroy();
+        if (cameraXController != null) {
+            cameraXController.onDestroy();
+            if (cameraXQrCodeCallback != null) {
+                CameraXController.deAttachQrCodeCallback(cameraXQrCodeCallback);
+                cameraXQrCodeCallback = null;
+            }
+        }
+
         NotificationCenter.getGlobalInstance().removeObserver(this, NotificationCenter.cameraInitied);
         NotificationCenter.getGlobalInstance().removeObserver(this, NotificationCenter.albumsDidLoad);
     }

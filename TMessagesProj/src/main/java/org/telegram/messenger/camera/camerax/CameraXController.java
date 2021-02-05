@@ -4,17 +4,21 @@ import android.app.Activity;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.ImageFormat;
 import android.graphics.drawable.BitmapDrawable;
 import android.media.MediaMetadataRetriever;
 import android.os.Build;
 import android.provider.MediaStore;
+import android.util.SparseArray;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.experimental.UseExperimental;
 import androidx.camera.core.CameraSelector;
+import androidx.camera.core.ImageAnalysis;
 import androidx.camera.core.ImageCapture;
 import androidx.camera.core.ImageCaptureException;
+import androidx.camera.core.ImageProxy;
 import androidx.camera.core.TorchState;
 import androidx.camera.view.CameraController;
 import androidx.camera.view.LifecycleCameraController;
@@ -29,8 +33,20 @@ import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.LifecycleRegistry;
 
 import com.google.android.exoplayer2.util.Log;
+import com.google.android.gms.vision.Frame;
+import com.google.android.gms.vision.barcode.Barcode;
+import com.google.android.gms.vision.barcode.BarcodeDetector;
+import com.google.zxing.BinaryBitmap;
+import com.google.zxing.ChecksumException;
+import com.google.zxing.FormatException;
+import com.google.zxing.NotFoundException;
+import com.google.zxing.PlanarYUVLuminanceSource;
+import com.google.zxing.Result;
+import com.google.zxing.common.HybridBinarizer;
+import com.google.zxing.qrcode.QRCodeReader;
 
 import org.telegram.messenger.AndroidUtilities;
+import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.FileLoader;
 import org.telegram.messenger.FileLog;
 import org.telegram.messenger.ImageLoader;
@@ -41,6 +57,7 @@ import org.telegram.messenger.Utilities;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.concurrent.Executor;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -48,28 +65,35 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 public class CameraXController implements LifecycleOwner {
+    private static final ArrayList<QrCodeCallback> qrCodeAnalyzerCallbacks = new ArrayList<>();
+    private static final int CORE_POOL_SIZE = 1;
+    private static final int MAX_POOL_SIZE = 1;
+    private static final int KEEP_ALIVE_SECONDS = 60;
+    private final ArrayList<Runnable> onCamerasRequestedCallbackQueue = new ArrayList<>();
+    private final LifecycleRegistry lifecycleRegistry = new LifecycleRegistry(this);
+    private final Executor mainExecutor;
+    private ThreadPoolExecutor threadPool;
+    private LifecycleCameraController cameraController = null;
+    private CameraXQrCodeScanner qrCodePlugin = null;
+    private boolean receivingCamera = false;
+    private boolean cameraCreated = false;
+    private org.telegram.messenger.camera.CameraController.VideoTakeCallback videoCallback;
+
+    public CameraXController(Context context) {
+        mainExecutor = ContextCompat.getMainExecutor(context);
+    }
+
     public static boolean cameraXEnabled() {
         //Log.d("CameraXController", "check: "+SharedConfig.allowCameraX);
         return Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && SharedConfig.allowCameraX;
     }
 
-    private static final int CORE_POOL_SIZE = 1;
-    private static final int MAX_POOL_SIZE = 1;
-    private static final int KEEP_ALIVE_SECONDS = 60;
+    public static void attachQrCodeCallback(QrCodeCallback callback) {
+        qrCodeAnalyzerCallbacks.add(callback);
+    }
 
-    private final LifecycleRegistry lifecycleRegistry = new LifecycleRegistry(this);
-
-    private ThreadPoolExecutor threadPool;
-    private final Executor mainExecutor;
-
-    private LifecycleCameraController cameraController = null;
-    private ArrayList<Runnable> onCamerasRequestedCallbackQueue = new ArrayList<>();
-
-    private boolean receivingCamera = false;
-    private boolean cameraCreated = false;
-
-    public CameraXController(Context context) {
-        mainExecutor = ContextCompat.getMainExecutor(context);
+    public static void deAttachQrCodeCallback(QrCodeCallback callback) {
+        qrCodeAnalyzerCallbacks.remove(callback);
     }
 
     public void toggleLenses() {
@@ -92,7 +116,10 @@ public class CameraXController implements LifecycleOwner {
         }
 
         receivingCamera = true;
+
         if (threadPool == null) threadPool = new ThreadPoolExecutor(CORE_POOL_SIZE, MAX_POOL_SIZE, KEEP_ALIVE_SECONDS, TimeUnit.SECONDS, new LinkedBlockingQueue<>());
+        if (qrCodePlugin == null) qrCodePlugin = new CameraXQrCodeScanner();
+
         onCamerasRequestedCallbackQueue.add(onCamerasRequested);
 
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE);
@@ -101,6 +128,7 @@ public class CameraXController implements LifecycleOwner {
         cameraController = new LifecycleCameraController(activity);
         cameraController.bindToLifecycle(this);
         previewer.setController(cameraController);
+        cameraController.setImageAnalysisAnalyzer(threadPool, qrCodePlugin);
 
         cameraController.getInitializationFuture().addListener(() -> {
             receivingCamera = false;
@@ -159,14 +187,14 @@ public class CameraXController implements LifecycleOwner {
         cameraController = null;
         if (threadPool != null) threadPool.shutdown();
         threadPool = null;
+        if (qrCodePlugin != null) qrCodePlugin.release();
+        qrCodePlugin = null;
     }
-
-    private org.telegram.messenger.camera.CameraController.VideoTakeCallback videoCallback;
 
     @UseExperimental(markerClass = ExperimentalVideo.class)
     public void startRecordingVideo(@Nullable File output, boolean mirror, final org.telegram.messenger.camera.CameraController.VideoTakeCallback callback, final Runnable onVideoStartRecord) {
         if (output == null) return;
-        FileLog.d("[CameraXController] startRecordingVideo (to = "+output.getAbsolutePath()+"");
+        FileLog.d("[CameraXController] startRecordingVideo (to = " + output.getAbsolutePath() + "");
 
         videoCallback = callback;
 
@@ -174,7 +202,7 @@ public class CameraXController implements LifecycleOwner {
         cameraController.startRecording(OutputFileOptions.builder(output).build(), threadPool, new OnVideoSavedCallback() {
             @Override
             public void onVideoSaved(@NonNull OutputFileResults outputFileResults) {
-                FileLog.d("[CameraXController] onVideoSaved: "+outputFileResults.toString());
+                FileLog.d("[CameraXController] onVideoSaved: " + outputFileResults.toString());
                 MediaMetadataRetriever mediaMetadataRetriever = null;
                 long duration = 0;
                 try {
@@ -230,7 +258,7 @@ public class CameraXController implements LifecycleOwner {
 
             @Override
             public void onError(int videoCaptureError, @NonNull String message, @Nullable Throwable cause) {
-                Log.d("CameraXController", "Error: "+message+" (err = "+videoCaptureError+")");
+                Log.d("CameraXController", "Error: " + message + " (err = " + videoCaptureError + ")");
                 cause.printStackTrace();
                 videoCallback = null;
             }
@@ -253,7 +281,7 @@ public class CameraXController implements LifecycleOwner {
     }
 
     public void takePicture(File cameraFile, Runnable onPictureTaken) {
-        FileLog.d("[CameraXController] takePicture = "+cameraFile.toString());
+        FileLog.d("[CameraXController] takePicture = " + cameraFile.toString());
         cameraController.setEnabledUseCases(CameraController.IMAGE_CAPTURE | CameraController.IMAGE_ANALYSIS);
         cameraController.takePicture(new ImageCapture.OutputFileOptions.Builder(cameraFile).build(), mainExecutor, new ImageCapture.OnImageSavedCallback() {
             @Override
@@ -278,5 +306,96 @@ public class CameraXController implements LifecycleOwner {
 
     public void setZoom(float zoom) {
         cameraController.setZoomRatio(zoom);
+    }
+
+    public interface QrCodeCallback {
+        void onQrScanned(String code);
+    }
+
+    private static class CameraXQrCodeScanner implements ImageAnalysis.Analyzer {
+        private final QRCodeReader zxingReader = new QRCodeReader();
+        private final BarcodeDetector visionQrReader = new BarcodeDetector.Builder(ApplicationLoader.applicationContext).setBarcodeFormats(Barcode.QR_CODE).build();
+
+        @Override
+        public void analyze(@NonNull ImageProxy image) {
+            if (
+                    (image.getFormat() != ImageFormat.YUV_422_888 && image.getFormat() != ImageFormat.YUV_444_888 && image.getFormat() != ImageFormat.YUV_420_888)
+                            || qrCodeAnalyzerCallbacks.size() == 0
+            ) {
+                image.close();
+                return;
+            }
+
+            ImageProxy.PlaneProxy plane = image.getPlanes()[0];
+            int width = image.getWidth();
+            int height = image.getHeight();
+
+            try {
+                String code;
+
+                if (visionQrReader.isOperational()) {
+                    code = visionImpl(plane, width, height);
+                } else {
+                    code = zxingImpl(plane, width, height);
+                }
+
+                if (code != null) notifyCallbacks(code);
+            } catch (Exception ignored) {
+                ignored.printStackTrace();
+            }
+
+            image.close();
+        }
+
+        public void release() {
+            visionQrReader.release();
+        }
+
+        private String visionImpl(ImageProxy.PlaneProxy plane, int width, int height) {
+            Frame frame = new Frame.Builder().setImageData(plane.getBuffer(), width, height, ImageFormat.NV21).build();
+            SparseArray<Barcode> codes = visionQrReader.detect(frame);
+
+            String value;
+            if (codes.size() > 0) {
+                value = codes.valueAt(0).rawValue;
+            } else {
+                value = null;
+            }
+            return value;
+        }
+
+        private String zxingImpl(ImageProxy.PlaneProxy plane, int width, int height) throws FormatException, ChecksumException, NotFoundException {
+            PlanarYUVLuminanceSource source = new PlanarYUVLuminanceSource(
+                    bufferAsBytes(plane.getBuffer()),
+                    width,
+                    height,
+                    0,
+                    0,
+                    width,
+                    height,
+                    false
+            );
+
+            BinaryBitmap bb = new BinaryBitmap(new HybridBinarizer(source));
+            Result result = zxingReader.decode(bb);
+            if (result == null) return null;
+            return result.getText();
+        }
+
+        private byte[] bufferAsBytes(ByteBuffer buffer) {
+            buffer.rewind();
+
+            byte[] bytes = new byte[buffer.remaining()];
+            buffer.get(bytes);
+            return bytes;
+        }
+
+        private void notifyCallbacks(String code) {
+            for (QrCodeCallback c : qrCodeAnalyzerCallbacks) {
+                c.onQrScanned(code);
+            }
+
+            qrCodeAnalyzerCallbacks.clear();
+        }
     }
 }
