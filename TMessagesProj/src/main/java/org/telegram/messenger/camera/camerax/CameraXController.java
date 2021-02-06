@@ -150,6 +150,11 @@ public class CameraXController implements LifecycleOwner {
         return cameraController.getTorchState().getValue();
     }
 
+    public boolean hasFrontFaceCamera() {
+        if (cameraController == null) return false;
+        return cameraController.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA);
+    }
+
     public int getNextFlashMode() {
         return getCurrentFlashMode() == TorchState.ON ? TorchState.OFF : TorchState.ON;
     }
@@ -395,7 +400,7 @@ public class CameraXController implements LifecycleOwner {
                 c.onQrScanned(code);
             }
 
-            qrCodeAnalyzerCallbacks.clear();
+            //qrCodeAnalyzerCallbacks.clear();
         }
     }
 }

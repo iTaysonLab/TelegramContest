@@ -1724,11 +1724,10 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
                 cameraXQrCodeCallback = null;
             }
 
-            cameraXQrCodeCallback = code -> {
-                AndroidUtilities.runOnUIThread(() -> {
-                    AndroidUtilities.handleProxyIntent(parentAlert.baseFragment.getParentActivity(), new Intent().setData(Uri.parse(code)));
-                });
-            };
+            cameraXQrCodeCallback = code -> AndroidUtilities.runOnUIThread(() -> {
+                boolean isProxyUrl = AndroidUtilities.handleProxyIntent(parentAlert.baseFragment.getParentActivity(), new Intent().setData(Uri.parse(code)));
+                if (isProxyUrl) CameraXController.deAttachQrCodeCallback(cameraXQrCodeCallback);
+            });
 
             CameraXController.attachQrCodeCallback(cameraXQrCodeCallback);
         } else {
@@ -1952,6 +1951,7 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
             cameraXPreviewView = new PreviewView(parentAlert.baseFragment.getParentActivity());
             cameraXPreviewView.setFocusable(true);
             cameraXPreviewView.setImplementationMode(PreviewView.ImplementationMode.COMPATIBLE);
+            cameraXPreviewView.setScaleType(PreviewView.ScaleType.FILL_CENTER);
 
             cameraXPreviewView.setOnClickListener((v) -> {
                 if (!cameraOpened) openCamera(true);
@@ -2031,7 +2031,7 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
                 }
 
                 switchCameraButton.setImageResource(cameraXController.isFrontFace() ? R.drawable.camera_revert1 : R.drawable.camera_revert2);
-                switchCameraButton.setVisibility(View.VISIBLE);
+                switchCameraButton.setVisibility(cameraXController.hasFrontFaceCamera() ? View.VISIBLE : View.GONE);
 
                 if (!cameraOpened) {
                     cameraInitAnimation = new AnimatorSet();
