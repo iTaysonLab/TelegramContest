@@ -105,7 +105,6 @@ public class SharedConfig {
     public static boolean allowBigEmoji;
     public static boolean useSystemEmoji;
     public static boolean disableCallConfirmation;
-    public static boolean allowImeScrolling;
     public static boolean allowCameraX;
     public static int fontSize = 16;
     public static int bubbleRadius = 10;
@@ -266,7 +265,6 @@ public class SharedConfig {
             allowBigEmoji = preferences.getBoolean("allowBigEmoji", true);
             useSystemEmoji = preferences.getBoolean("useSystemEmoji", false);
             disableCallConfirmation = preferences.getBoolean("disableCallConfirmation", false);
-            allowImeScrolling = preferences.getBoolean("allowImeScrolling", false);
             allowCameraX = preferences.getBoolean("allowCameraX", false);
             streamMedia = preferences.getBoolean("streamMedia", true);
             saveStreamMedia = preferences.getBoolean("saveStreamMedia", true);
@@ -578,14 +576,6 @@ public class SharedConfig {
         SharedPreferences preferences = MessagesController.getGlobalMainSettings();
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean("disableCallConfirmation", disableCallConfirmation);
-        editor.commit();
-    }
-
-    public static void toggleAllowImeScrolling() {
-        allowImeScrolling = !allowImeScrolling;
-        SharedPreferences preferences = MessagesController.getGlobalMainSettings();
-        SharedPreferences.Editor editor = preferences.edit();
-        editor.putBoolean("allowImeScrolling", allowImeScrolling);
         editor.commit();
     }
 
