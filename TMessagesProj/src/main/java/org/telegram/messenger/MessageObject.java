@@ -1190,7 +1190,7 @@ public class MessageObject {
                         rights.append(LocaleController.getString("EventLogPromotedBanUsers", R.string.EventLogPromotedBanUsers));
                     }
                     if (o.manage_call != n.manage_call) {
-                        rights.append('\n').append(n.ban_users ? '+' : '-').append(' ');
+                        rights.append('\n').append(n.manage_call ? '+' : '-').append(' ');
                         rights.append(LocaleController.getString("EventLogPromotedManageCall", R.string.EventLogPromotedManageCall));
                     }
                 }
