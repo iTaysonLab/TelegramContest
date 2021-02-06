@@ -5496,9 +5496,14 @@ public class MessageObject {
             chat = MessagesController.getInstance(currentAccount).getChat(message.peer_id.channel_id);
         }
         if (ChatObject.isChannel(chat)) {
+            if (message.action != null && !(message.action instanceof TLRPC.TL_messageActionEmpty)) {
+                return chat.creator || chat.admin_rights != null && chat.admin_rights.delete_messages;
+            }
+
             if (inScheduleMode && !chat.megagroup) {
                 return chat.creator || chat.admin_rights != null && (chat.admin_rights.delete_messages || message.out);
             }
+
             return inScheduleMode || message.id != 1 && (chat.creator || chat.admin_rights != null && (chat.admin_rights.delete_messages || message.out && (chat.megagroup || chat.admin_rights.post_messages)) || chat.megagroup && message.out && message.from_id instanceof TLRPC.TL_peerUser);
         }
         return inScheduleMode || isOut(message) || !ChatObject.isChannel(chat);
