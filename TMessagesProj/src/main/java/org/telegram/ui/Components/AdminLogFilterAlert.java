@@ -113,13 +113,13 @@ public class AdminLogFilterAlert extends BottomSheet {
         editRow = rowCount++;
         if (isMegagroup) {
             pinnedRow = rowCount++;
+            callsRow = rowCount++;
         } else {
             pinnedRow = -1;
+            callsRow = -1;
         }
         leavingRow = rowCount++;
-        callsRow = rowCount;
-        rowCount += 2;
-        allAdminsRow = rowCount;
+        allAdminsRow = rowCount++;
 
         shadowDrawable = context.getResources().getDrawable(R.drawable.sheet_shadow_round).mutate();
         shadowDrawable.setColorFilter(new PorterDuffColorFilter(Theme.getColor(Theme.key_dialogBackground), PorterDuff.Mode.MULTIPLY));
