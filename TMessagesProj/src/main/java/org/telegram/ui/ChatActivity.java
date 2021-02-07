@@ -11213,7 +11213,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                         }
                     }
 
-                    if (replyButton.getVisibility() != newVisibility) {
+                    if (replyButton.getVisibility() != newVisibility || replyButtonAnimation != null) {
                         if (replyButtonAnimation != null) {
                             replyButtonAnimation.cancel();
                         }
