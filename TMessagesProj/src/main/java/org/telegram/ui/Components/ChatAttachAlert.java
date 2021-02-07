@@ -33,6 +33,7 @@ import android.text.Editable;
 import android.text.TextPaint;
 import android.text.TextUtils;
 import android.text.TextWatcher;
+import android.text.style.ImageSpan;
 import android.util.Property;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -54,6 +55,7 @@ import android.widget.TextView;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ChatObject;
 import org.telegram.messenger.ContactsController;
+import org.telegram.messenger.Emoji;
 import org.telegram.messenger.ImageLocation;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.MediaController;
@@ -1472,6 +1474,12 @@ public class ChatAttachAlert extends BottomSheet implements NotificationCenter.N
                     });
                     sendButtonColorAnimator.setDuration(150).start();
                 }
+
+                ImageSpan[] spans = editable.getSpans(0, editable.length(), ImageSpan.class);
+                for (int i = 0; i < spans.length; i++) {
+                    editable.removeSpan(spans[i]);
+                }
+                Emoji.replaceEmoji(editable, commentTextView.getEditText().getPaint().getFontMetricsInt(), AndroidUtilities.dp(20), false);
             }
         });
         frameLayout2.addView(commentTextView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.BOTTOM | Gravity.LEFT, 0, 0, 84, 0));
