@@ -195,6 +195,7 @@ public class TwoStepVerificationActivity extends BaseFragment implements Notific
         passwordEditText.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
         passwordEditText.setHintTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteHintText));
         passwordEditText.setBackgroundDrawable(Theme.createEditTextDrawable(context, false));
+        passwordEditText.setContentDescription(LocaleController.getString("PleaseEnterCurrentPassword", R.string.PleaseEnterCurrentPassword));
         passwordEditText.setMaxLines(1);
         passwordEditText.setLines(1);
         passwordEditText.setGravity(Gravity.CENTER_HORIZONTAL);
