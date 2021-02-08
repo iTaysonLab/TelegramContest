@@ -1606,17 +1606,9 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
         public void startRecording(File outputFile, android.opengl.EGLContext sharedContext) {
             int resolution;
             int bitrate;
-            String model = Build.DEVICE;
-            if (model == null) {
-                model = "";
-            }
-            if (model.startsWith("zeroflte") || model.startsWith("zenlte")) {
-                resolution = 320;
-                bitrate = 600000;
-            } else {
-                resolution = 240;
-                bitrate = 400000;
-            }
+
+            resolution = 320;
+            bitrate = 600000;
 
             videoFile = outputFile;
             videoWidth = resolution;
