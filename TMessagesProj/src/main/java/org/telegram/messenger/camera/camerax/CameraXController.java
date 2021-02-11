@@ -104,7 +104,7 @@ public class CameraXController implements LifecycleOwner {
         cameraController.setCameraSelector(frontFace ? CameraSelector.DEFAULT_BACK_CAMERA : CameraSelector.DEFAULT_FRONT_CAMERA);
     }
 
-    public void initCameraEngine(Activity activity, PreviewView previewer, boolean frontFace, Runnable onCamerasRequested) {
+    public void initCameraEngine(Activity activity, @Nullable PreviewView previewer, boolean frontFace, Runnable onCamerasRequested) {
         if (receivingCamera) {
             onCamerasRequestedCallbackQueue.add(onCamerasRequested);
             return;
@@ -127,8 +127,8 @@ public class CameraXController implements LifecycleOwner {
 
         cameraController = new LifecycleCameraController(activity);
         cameraController.bindToLifecycle(this);
-        previewer.setController(cameraController);
         cameraController.setImageAnalysisAnalyzer(threadPool, qrCodePlugin);
+        if (previewer != null) previewer.setController(cameraController);
 
         cameraController.getInitializationFuture().addListener(() -> {
             receivingCamera = false;
@@ -146,7 +146,7 @@ public class CameraXController implements LifecycleOwner {
     }
 
     public int getCurrentFlashMode() {
-        if (cameraController == null) return TorchState.OFF;
+        if (cameraController == null || cameraController.getTorchState().getValue() == null) return TorchState.OFF;
         return cameraController.getTorchState().getValue();
     }
 
@@ -263,8 +263,8 @@ public class CameraXController implements LifecycleOwner {
 
             @Override
             public void onError(int videoCaptureError, @NonNull String message, @Nullable Throwable cause) {
-                Log.d("CameraXController", "Error: " + message + " (err = " + videoCaptureError + ")");
-                cause.printStackTrace();
+                FileLog.e( "[CameraXController] Error: " + message + " (err = " + videoCaptureError + ")");
+                if (cause != null) FileLog.e(cause);
                 videoCallback = null;
             }
         });
@@ -345,8 +345,8 @@ public class CameraXController implements LifecycleOwner {
                 }
 
                 if (code != null) notifyCallbacks(code);
-            } catch (Exception ignored) {
-                ignored.printStackTrace();
+            } catch (Exception e) {
+                FileLog.e(e);
             }
 
             image.close();

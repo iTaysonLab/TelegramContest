@@ -1673,7 +1673,7 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
             }*/
 
             if (parentAlert.isShowing() && parentAlert.baseFragment != null && parentAlert.getBackDrawable().getAlpha() != 0 && !cameraOpened) {
-                showCamera();
+                cameraXController.initCameraEngine(parentAlert.baseFragment.getParentActivity(), cameraXPreviewView, parentAlert.openWithFrontFaceCamera, this::showCamera);
             }
         } else {
             if (!SharedConfig.inappCamera) {
@@ -1952,6 +1952,7 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
             cameraXPreviewView.setFocusable(true);
             cameraXPreviewView.setImplementationMode(PreviewView.ImplementationMode.COMPATIBLE);
             cameraXPreviewView.setScaleType(PreviewView.ScaleType.FILL_CENTER);
+            cameraXController.attachPreview(cameraXPreviewView);
 
             cameraXPreviewView.setOnClickListener((v) -> {
                 if (!cameraOpened) openCamera(true);
@@ -2011,61 +2012,59 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
 
             checkCameraViewPosition();
 
-            cameraXController.initCameraEngine(parentAlert.baseFragment.getParentActivity(), cameraXPreviewView, parentAlert.openWithFrontFaceCamera, () -> {
-                int current = cameraXController.getCurrentFlashMode();
-                int next = cameraXController.getNextFlashMode();
+            int current = cameraXController.getCurrentFlashMode();
+            int next = cameraXController.getNextFlashMode();
 
-                if (current == next) {
-                    for (int a = 0; a < 2; a++) {
-                        flashModeButton[a].setVisibility(View.INVISIBLE);
-                        flashModeButton[a].setAlpha(0.0f);
-                        flashModeButton[a].setTranslationY(0.0f);
-                    }
-                } else {
-                    setCameraFlashModeIcon(flashModeButton[0], cameraXController.getCurrentFlashMode());
-                    for (int a = 0; a < 2; a++) {
-                        flashModeButton[a].setVisibility(a == 0 ? View.VISIBLE : View.INVISIBLE);
-                        flashModeButton[a].setAlpha(a == 0 && cameraOpened ? 1.0f : 0.0f);
-                        flashModeButton[a].setTranslationY(0.0f);
-                    }
+            if (current == next) {
+                for (int a = 0; a < 2; a++) {
+                    flashModeButton[a].setVisibility(View.INVISIBLE);
+                    flashModeButton[a].setAlpha(0.0f);
+                    flashModeButton[a].setTranslationY(0.0f);
                 }
+            } else {
+                setCameraFlashModeIcon(flashModeButton[0], cameraXController.getCurrentFlashMode());
+                for (int a = 0; a < 2; a++) {
+                    flashModeButton[a].setVisibility(a == 0 ? View.VISIBLE : View.INVISIBLE);
+                    flashModeButton[a].setAlpha(a == 0 && cameraOpened ? 1.0f : 0.0f);
+                    flashModeButton[a].setTranslationY(0.0f);
+                }
+            }
 
-                switchCameraButton.setImageResource(cameraXController.isFrontFace() ? R.drawable.camera_revert1 : R.drawable.camera_revert2);
-                switchCameraButton.setVisibility(cameraXController.hasFrontFaceCamera() ? View.VISIBLE : View.GONE);
+            switchCameraButton.setImageResource(cameraXController.isFrontFace() ? R.drawable.camera_revert1 : R.drawable.camera_revert2);
+            switchCameraButton.setVisibility(cameraXController.hasFrontFaceCamera() ? View.VISIBLE : View.GONE);
 
-                if (!cameraOpened) {
-                    cameraInitAnimation = new AnimatorSet();
-                    cameraInitAnimation.playTogether(
-                            ObjectAnimator.ofFloat(cameraXPreviewView, View.ALPHA, 0.0f, 1.0f),
-                            ObjectAnimator.ofFloat(cameraIcon, View.ALPHA, 0.0f, 1.0f));
-                    cameraInitAnimation.setDuration(180);
-                    cameraInitAnimation.addListener(new AnimatorListenerAdapter() {
-                        @Override
-                        public void onAnimationEnd(Animator animation) {
-                            if (animation.equals(cameraInitAnimation)) {
-                                canSaveCameraPreview = true;
-                                cameraInitAnimation = null;
-                                if (!isHidden) {
-                                    int count = gridView.getChildCount();
-                                    for (int a = 0; a < count; a++) {
-                                        View child = gridView.getChildAt(a);
-                                        if (child instanceof PhotoAttachCameraCell) {
-                                            child.setVisibility(View.INVISIBLE);
-                                            break;
-                                        }
+            if (!cameraOpened) {
+                cameraInitAnimation = new AnimatorSet();
+                cameraInitAnimation.playTogether(
+                        ObjectAnimator.ofFloat(cameraXPreviewView, View.ALPHA, 0.0f, 1.0f),
+                        ObjectAnimator.ofFloat(cameraIcon, View.ALPHA, 0.0f, 1.0f));
+                cameraInitAnimation.setDuration(180);
+                cameraInitAnimation.addListener(new AnimatorListenerAdapter() {
+                    @Override
+                    public void onAnimationEnd(Animator animation) {
+                        if (animation.equals(cameraInitAnimation)) {
+                            canSaveCameraPreview = true;
+                            cameraInitAnimation = null;
+                            if (!isHidden) {
+                                int count = gridView.getChildCount();
+                                for (int a = 0; a < count; a++) {
+                                    View child = gridView.getChildAt(a);
+                                    if (child instanceof PhotoAttachCameraCell) {
+                                        child.setVisibility(View.INVISIBLE);
+                                        break;
                                     }
                                 }
                             }
                         }
+                    }
 
-                        @Override
-                        public void onAnimationCancel(Animator animation) {
-                            cameraInitAnimation = null;
-                        }
-                    });
-                    cameraInitAnimation.start();
-                }
-            });
+                    @Override
+                    public void onAnimationCancel(Animator animation) {
+                        cameraInitAnimation = null;
+                    }
+                });
+                cameraInitAnimation.start();
+            }
 
             invalidate();
         }
