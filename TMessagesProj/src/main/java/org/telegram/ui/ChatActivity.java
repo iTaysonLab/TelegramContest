@@ -6045,7 +6045,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                     }
                     updatePinnedMessageView(true);
                     updateBottomOverlay();
-                    updateVisibleRows();
+                    updateVisibleRows(2);
                 }
             }
 
@@ -13480,7 +13480,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                 }
             }
             if (changed) {
-                updateVisibleRows(true);
+                updateVisibleRows(1);
             }
         } else if (id == NotificationCenter.messagePlayingDidStart) {
             MessageObject messageObject = (MessageObject) args[0];
@@ -15389,7 +15389,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                     chatAdapter.notifyItemRangeChanged(chatAdapter.messagesStartRow, messages.size());
                 }
             }
-            updateVisibleRows(true);
+            updateVisibleRows(1);
         } else if (threadMessageId == 0) {
             first_unread_id = 0;
             last_message_id = 0;
@@ -19520,10 +19520,10 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
     }
 
     private void updateVisibleRows() {
-        updateVisibleRows(false);
+        updateVisibleRows(0);
     }
 
-    private void updateVisibleRows(boolean isDeletionPending) {
+    private void updateVisibleRows(int updateMode) {
         if (chatListView == null) {
             return;
         }
@@ -19553,15 +19553,15 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                 MessageObject messageObject = cell.getMessageObject();
 
                 boolean shouldUpdateReply = false;
-                if (messageObject.replyMessageObject != null) {
-                    if (messagesDict[0].indexOfKey(messageObject.replyMessageObject.getId()) >= 0) {
+                if (messageObject.isReply()) {
+                    if (messagesDict[0].indexOfKey(messageObject.replyMessageObject.getId()) >= 0 && updateMode == 2) {
                         MessageObject msg = messagesDict[0].get(messageObject.replyMessageObject.getId());
                         if (msg.messageText.hashCode() != messageObject.replyMessageObject.messageText.hashCode()) {
                             cell.getMessageObject().replyMessageObject = msg;
                             shouldUpdateReply = true;
                         }
                     } else {
-                        if (isDeletionPending) {
+                        if (updateMode == 1) {
                             cell.getMessageObject().replyMessageObject = null;
                             cell.getMessageObject().messageOwner.reply_to = null;
                             shouldUpdateReply = true;
