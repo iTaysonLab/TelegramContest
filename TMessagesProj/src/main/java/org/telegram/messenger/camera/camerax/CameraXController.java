@@ -32,7 +32,6 @@ import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.LifecycleRegistry;
 
-import com.google.android.exoplayer2.util.Log;
 import com.google.android.gms.vision.Frame;
 import com.google.android.gms.vision.barcode.Barcode;
 import com.google.android.gms.vision.barcode.BarcodeDetector;
@@ -59,20 +58,19 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.Executor;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class CameraXController implements LifecycleOwner {
     private static final ArrayList<QrCodeCallback> qrCodeAnalyzerCallbacks = new ArrayList<>();
-    private static final int CORE_POOL_SIZE = 1;
-    private static final int MAX_POOL_SIZE = 1;
-    private static final int KEEP_ALIVE_SECONDS = 60;
     private final ArrayList<Runnable> onCamerasRequestedCallbackQueue = new ArrayList<>();
     private final LifecycleRegistry lifecycleRegistry = new LifecycleRegistry(this);
     private final Executor mainExecutor;
-    private ThreadPoolExecutor threadPool;
+    private ExecutorService cameraThreadExecutor;
     private LifecycleCameraController cameraController = null;
     private CameraXQrCodeScanner qrCodePlugin = null;
     private boolean receivingCamera = false;
@@ -84,7 +82,6 @@ public class CameraXController implements LifecycleOwner {
     }
 
     public static boolean cameraXEnabled() {
-        //Log.d("CameraXController", "check: "+SharedConfig.allowCameraX);
         return Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && SharedConfig.allowCameraX;
     }
 
@@ -117,7 +114,7 @@ public class CameraXController implements LifecycleOwner {
 
         receivingCamera = true;
 
-        if (threadPool == null) threadPool = new ThreadPoolExecutor(CORE_POOL_SIZE, MAX_POOL_SIZE, KEEP_ALIVE_SECONDS, TimeUnit.SECONDS, new LinkedBlockingQueue<>());
+        if (cameraThreadExecutor == null) cameraThreadExecutor = Executors.newSingleThreadExecutor();
         if (qrCodePlugin == null) qrCodePlugin = new CameraXQrCodeScanner();
 
         onCamerasRequestedCallbackQueue.add(onCamerasRequested);
@@ -127,7 +124,7 @@ public class CameraXController implements LifecycleOwner {
 
         cameraController = new LifecycleCameraController(activity);
         cameraController.bindToLifecycle(this);
-        cameraController.setImageAnalysisAnalyzer(threadPool, qrCodePlugin);
+        cameraController.setImageAnalysisAnalyzer(cameraThreadExecutor, qrCodePlugin);
         if (previewer != null) previewer.setController(cameraController);
 
         cameraController.getInitializationFuture().addListener(() -> {
@@ -190,8 +187,8 @@ public class CameraXController implements LifecycleOwner {
         cameraCreated = false;
         if (cameraController != null) cameraController.unbind();
         cameraController = null;
-        if (threadPool != null) threadPool.shutdown();
-        threadPool = null;
+        if (cameraThreadExecutor != null) cameraThreadExecutor.shutdown();
+        cameraThreadExecutor = null;
         if (qrCodePlugin != null) qrCodePlugin.release();
         qrCodePlugin = null;
     }
@@ -204,7 +201,7 @@ public class CameraXController implements LifecycleOwner {
         videoCallback = callback;
 
         cameraController.setEnabledUseCases(CameraController.VIDEO_CAPTURE);
-        cameraController.startRecording(OutputFileOptions.builder(output).build(), threadPool, new OnVideoSavedCallback() {
+        cameraController.startRecording(OutputFileOptions.builder(output).build(), cameraThreadExecutor, new OnVideoSavedCallback() {
             @Override
             public void onVideoSaved(@NonNull OutputFileResults outputFileResults) {
                 FileLog.d("[CameraXController] onVideoSaved: " + outputFileResults.toString());
@@ -232,7 +229,7 @@ public class CameraXController implements LifecycleOwner {
                 if (mirror) {
                     Bitmap b = Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(), Bitmap.Config.ARGB_8888);
                     Canvas canvas = new Canvas(b);
-                    canvas.scale(-1, 1, b.getWidth() / 2, b.getHeight() / 2);
+                    canvas.scale(-1, 1, b.getWidth() / 2f, b.getHeight() / 2f);
                     canvas.drawBitmap(bitmap, 0, 0, null);
                     bitmap.recycle();
                     bitmap = b;
@@ -253,7 +250,7 @@ public class CameraXController implements LifecycleOwner {
                     if (videoCallback != null) {
                         String path = cacheFile.getAbsolutePath();
                         if (bitmapFinal != null) {
-                            ImageLoader.getInstance().putImageToCache(new BitmapDrawable(bitmapFinal), Utilities.MD5(path));
+                            ImageLoader.getInstance().putImageToCache(new BitmapDrawable(ApplicationLoader.applicationContext.getResources(), bitmapFinal), Utilities.MD5(path));
                         }
                         videoCallback.onFinishVideoRecording(path, durationFinal);
                         videoCallback = null;
@@ -320,13 +317,21 @@ public class CameraXController implements LifecycleOwner {
     private static class CameraXQrCodeScanner implements ImageAnalysis.Analyzer {
         private final QRCodeReader zxingReader = new QRCodeReader();
         private final BarcodeDetector visionQrReader = new BarcodeDetector.Builder(ApplicationLoader.applicationContext).setBarcodeFormats(Barcode.QR_CODE).build();
+        private final List<Integer> supportedImageFormats;
+
+        {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                supportedImageFormats = Arrays.asList(ImageFormat.YUV_422_888, ImageFormat.YUV_444_888, ImageFormat.YUV_420_888);
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                supportedImageFormats = Collections.singletonList(ImageFormat.YUV_420_888);
+            } else {
+                supportedImageFormats = new ArrayList<>();
+            }
+        }
 
         @Override
         public void analyze(@NonNull ImageProxy image) {
-            if (
-                    (image.getFormat() != ImageFormat.YUV_422_888 && image.getFormat() != ImageFormat.YUV_444_888 && image.getFormat() != ImageFormat.YUV_420_888)
-                            || qrCodeAnalyzerCallbacks.size() == 0
-            ) {
+            if (!supportedImageFormats.contains(image.getFormat()) || qrCodeAnalyzerCallbacks.size() == 0) {
                 image.close();
                 return;
             }
@@ -399,8 +404,6 @@ public class CameraXController implements LifecycleOwner {
             for (QrCodeCallback c : qrCodeAnalyzerCallbacks) {
                 c.onQrScanned(code);
             }
-
-            //qrCodeAnalyzerCallbacks.clear();
         }
     }
 }
